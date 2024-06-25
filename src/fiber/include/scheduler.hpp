@@ -51,21 +51,58 @@ private:
 
 
 /*
-Scheduler：协程调度器类
+Scheduler：N-M协程调度器，管理多线程和协程
 主要作用：
     用于管理多个线程和协程
 */
 class Scheduler {
 public:
+    typedef std::shared_ptr<Scheduler> ptr;    // Scheduler::ptr 是Scheduler类对象的共享指针类型的别名
+
+    Scheduler(size_t threads = 1, bool user_caller = true, const std::string &name = "Scheduler");  
+    virtual ~Scheduler();   // 析构函数定义为虚函数
+
+    const std::string &getName() const { return name_; }
+
+    // 静态成员函数
+    static Scheduler *GetThis();    // 获得当前线程的协程调度器
+    static Fiber *GetMainFiber();   // 获得当前线程的主协程
+
+    // 添加任务到调度器中
+    template <class TaskType>
+    void scheduler(TaskType task, int thread = -1) {
+        bool isNeedTickle = false;    // 是否需要唤醒空闲的协程
+        {
+            Mutex::Lock lock(mutex_);   // 初始化局部互斥锁lock，此时会自动加锁（ScopedLockImpl类中的定义）
+            // 因此这里已经加了锁，下面添加调度任务就不需要在加锁了
+            isNeedTickle = schedulerNoLock(task, thread);   // 添加调度任务
+        }
+
+        if (isNeedTickle) {
+            tickle();
+        }
+    }
+
+    void start();   // 启动调度器
+    void stop();   // 停止调度器，等待所有任务结束
 
 protected:
+    virtual void tickle();   // 通知调度器任务到达
+    void run();   // 协程调度函数
+    virtual void idle();   // 无任务时，执行idle协程
+    virtual bool stopping();   // 返回是否可以停止
+    void setThis();    // 设置当前线程调度器
+    bool isHasIdleThreads() {   // 有没有空闲进程
+        return idleTreadCnt_  > 0;
+    }
+
 
 private:
-    // 满足无锁条件时（即task_没被加锁），添加调度任务
+    // 满足无锁条件时（确保task_没被其他线程加锁占用），添加调度任务
     // TODO：加入使用clang的锁检查
     template <class TaskType>
     bool schedulerNoLock(TaskType t, int thread) {
-        bool isNeedTickle = tasks_.empty();
+        bool isNeedTickle = tasks_.empty();   // 任务队列是空，可以唤醒空闲的协程
         SchedulerTask task(t, thread);
         if (task.fiber_ || task.cb_) {  // 要么是协程，要么是函数对象
             tasks.push_back(task);   // 任务有效，加入到任务队列中
@@ -81,6 +118,7 @@ private:
     size_t threadCnt_ = 0;   // 工作线程数量（不包含主线程）
     std::atomic<size_t> activeThreadCnt_ = {0};   // 活跃线程数目
     std::atomic<size_t> idleTreadCnt_ = {0};  // IDL线程（在线程池中处于空闲的线程）数目
+    Fiber::ptr rootFiber_;   // 指向本线程的调度协程（主协程）
     bool isUseCaller_;   // 是否使用use_caller模式
     bool isStopped_;   // 线程池或调度器是否已经停止
 

@@ -11,7 +11,7 @@
 namespace monsoon {
 const bool DEBUG = true; 
 
-// 线程中的协程管理：一些全局变量
+// 线程中的协程管理：一些全局变量，存储实例
 static thread_local Fiber *cur_fiber = nullptr;   // 当前线程正在运行的协程
 static thread_local Fiber::ptr cur_thread_fiber = nullptr;   // 当前线程的主协程
 static std::atomic<uint64_t> cur_fiber_id{0};   // 用于生成协程的ID，初始化为0

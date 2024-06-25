@@ -9,6 +9,9 @@
 #include <execinfo.h>   // ::backtrace()
 #include <cxxabi.h>
 #include <assert.h>
+#include <sys/types.h>  // pid_t
+#include <sys/syscall.h>    // SYS_gettid
+#include <unistd.h>  // syscall
 
 namespace monsoon {
 
@@ -110,5 +113,18 @@ static void CondPanic(bool condition, std::string err){
     }
 }
 }
+
+/*
+GetThreadId
+功能：获得线程ID
+*/
+pid_t GetThreadId() {
+    return syscall(SYS_gettid); // 直接系统调用
+    // return pthread_self();   // pthread封装
+}
+
+
+
+
 
 #endif

@@ -142,7 +142,7 @@ private:
 
 /*
 Mutex：互斥锁类
-作用：封装了pthread库中的互斥锁功能
+作用：封装了pthread库中的互斥锁功能，在创建时会自动加锁
 */
 class Mutex: Nonecopyable {
 public:
