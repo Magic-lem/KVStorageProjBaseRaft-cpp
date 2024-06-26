@@ -22,6 +22,8 @@ SchedulerTask：调度任务类
 */
 class SchedulerTask {
 public:
+    friend class Scheduler;
+
     SchedulerTask() {   
         thread_ = -1;   // 初始化为-1
     }
@@ -46,7 +48,7 @@ public:
 private:
     Fiber::ptr fiber_;   // 指向协程对象的指针
     std::function<void()> cb_;    // 回调函数
-    int thread_;   // 执行该任务的线程，-1表示不指定线程
+    int thread_;   // 执行该任务的线程ID，-1表示不指定线程
 };
 
 

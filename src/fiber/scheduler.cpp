@@ -99,7 +99,7 @@ void Scheduler::start() {
     
     // 创建线程，加入到线程池
     for (size_t i = 0; i < threadCnt_; ++i) {
-      threadPool_[i].reset(Thread(std::bind(&Scheduler::run(), this), name_ + "_" + std::to_string(i)));
+      threadPool_[i].reset(new Thread(std::bind(&Scheduler::run, this), name_ + "_" + std::to_string(i)));  // 创建线程并执行
       threadIds_.push_back(threadPool_[i]->getId());
     }
 }
@@ -108,23 +108,120 @@ void Scheduler::start() {
 run：调度器开始调度任务
 主要功能：负责管理和执行调度器的任务，包括：管理任务队列、调度和执行任务、处理空闲状态等
 */
-scheduler::run() {
-  std::cout << LOG_HEAD << "begin run" << std::endl;
-  set_hook_enable(true);   // TODO
-  setThis();  
-  if (GetThreadId() != rootThread_) { // 当前线程不是caller线程（因为caller线程的主协程（调度协程）已经初始化过了
-    // 初始化主协程
-    cur_thread_fiber = Fiber::GetThis().get();
-  }
+void Scheduler::run() {
+    std::cout << LOG_HEAD << "begin run" << std::endl;
+    set_hook_enable(true);   // TODO
+    setThis();  
+    if (GetThreadId() != rootThread_) { // 当前线程不是caller线程（因为caller线程的主协程（调度协程）已经初始化过了)
+        // 初始化主协程
+        cur_scheduler_fiber = Fiber::GetThis().get();
+    }
 
-  // 创建idle协程，用于空闲时执行idle函数
-  Fiber::ptr idleFiber(new Fiber(std::bind(&Scheduler::idle, this)));
-  Fiber::ptr cbFiber;  // 可重用的协程，用于执行任务回调
+    // 创建idle协程，用于空闲时执行idle函数
+    Fiber::ptr idleFiber(new Fiber(std::bind(&Scheduler::idle, this)));
+    Fiber::ptr cbFiber;  // 可重用的协程，用于执行函数对象（任务是个函数而不是协程时，使用cbFiber运行）
 
+    SchedulerTask task;  // 任务
+    while (true) {  // 调度器将在这个循环中不断调度和执行任务，直到外部条件中断
+        task.reset();   // 重置任务，确保每一轮开始任务是空的
+        bool tickle_me;  // 用来标记是否需要通知线程进行调度的变量
+        {
+            Mutex::Lock lock(mutex_);
+            auto it = tasks_.begin();  
+            // 遍历所有任务
+            while (it != tasks_.end()) {
+                if (it->thread_ != -1 && it->thread_ != GetThreadId()) {    // 当任务已经指定了线程，且不是本线程，跳过，并通知其他线程要调度该任务
+                    ++it;
+                    tickle_me = true;
+                    continue;
+                }
+                // 验证任务是否正确封装了协程或者函数
+                CondPanic(it->fiber_ || it->cb_, "task is nullptr");
+                if (it->fiber_) {   // 协程还要验证下状态
+                    CondPanic(it->fiber_->getState() == Fiber::READY, "fiber task state error");
+                }
 
+                // 找到一个可行的任务，准备开始调度
+                task = *it;
+                tasks_.erase(it++); // 从任务队列中删除
+                ++activeThreadCnt_;  // 增加活跃线程的数量
+                break;
+            }
+            // 当前线程取出任务后，如果还存在任务，则通知其他线程
+            tickle_me |= (it != tasks_.end());
+        }
+        if (tickle_me) {
+            tickle();   // 通知线程还有任务
+        }
+
+        // 开始执行任务
+        if (task.fiber_) {  // 执行协程
+            task.fiber_->resume();  //切换到运行态，开始运行
+            // 执行结束
+            --activeThreadCnt_;
+            task.reset();  // 清空任务，再次循环
+        } else if (task.cb_) {
+            if (cbFiber) {
+                cbFiber->reset(task.cb_);   // Fiber对象的重置，指针指向位置不变
+            } else {
+                cbFiber.reset(new Fiber(task.cb_)); // 共享指针的重置，指向一个新Fiber对象
+            }
+        } else {
+            // 没有任务，task为空，执行idle协程
+            if (idleFiber->getState() == Fiber::TERM) { // 但是idle协程结束了
+                std::cout << LOG_HEAD << "idle fiber term" << std::endl;
+                break; 
+            }
+            // idle协程正常时，不断空轮转(idle协程执行->idle协程yield挂起->进入调度器主循环->没有任务->idle协程执行)
+            ++idleTreadCnt_;    // 增加空闲线程数量，表示本线程为空闲
+            idleFiber->resume();    // 空闲期间执行dile协程
+            --idleTreadCnt_;    // idle协程退出，此线程开始新的循环寻找任务
+        }
+    }
+    std::cout << "run exit" << std::endl;   // 触发了打破循环的条件，调度器退出运行
 }
 
+/*
+tickle：通知还有任务/任务到达
+TODO：是个虚函数，并没有具体实现。可以使用条件变量实现
+*/
+void Scheduler::tickle() {
+    std::cout << "tickle" << std::endl;
+}
 
+/*
+stopping：判断是否可以停止调度器
+*/
+bool Scheduler::stopping() {
+    Mutex::Lock lock(mutex_);   // 加锁，访问共享变量
+    return isStopped_ && tasks_.empty() && activeThreadCnt_ == 0;
+}
+
+/*
+idle：空闲协程所执行的函数
+主要功能：使线程处于等待状态，直到有新的任务
+*/
+void Scheduler::idle() {
+    while (!stopping()) {
+        Fiber::GetThis()->yield();   // 空闲协程让出执行权限给调度协程，调度协程会接着之前的上下文继续执行，从而如果有新任务到来调度器能更快的发现
+    }
+
+    // 疑问：直接执行完不也是回到调度协程吗？
+    // 解答：与执行完不同的是，空闲协程让出执行权限时，仍然是位于while循环中，所以当重新又启动协程还是在while循环中，而不是重新执行idle函数
+    //      也就是说，空闲协程是一直在执行这个函数的，只不过让出权限后暂停了，这个函数并没有运行完
+}
+
+/*
+stop：停止调度器
+主要作用：
+*/
+void Scheduler::stop() {
+    std::cout << LOG_HEAD << "stop" << std::endl;
+    if (stopping()) return;     // 已经处于停止状态了
+    isStopped_ = true;  // 设置停止标志
+
+    // 对于use_caller模式，stop只能由caller线程执行
+}
 
 /*
 析构函数

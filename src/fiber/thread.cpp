@@ -20,8 +20,8 @@ Input:  std::function<void()> cb 函数对象
 Thread::Thread(std::function<void()> cb, const std::string &name = "UNKNOW"): cb_(cb), name_(name) {
     if (name.empty()) name_ = "UNKNOW";
 
-    // 创建一个新的线程
-    int rt = pthread_create(&thread_, nullptr, &Thread::run, this); // this是传给run的参数，是指向当前线程的指针
+    // 创建一个新的线程，请注意：此时线程将直接开始运行，执行run函数!!!!!
+    int rt = pthread_create(&thread_, nullptr, &Thread::run, this); // this是传给run的参数，是指向当前线程的指针。此时会开始执行run
     if (rt) {   // 创建失败
         std::cout << "pthread_create error, name: " << name_ << std::endl;
         throw std::logic_error("pthread_create");   // 抛出异常
