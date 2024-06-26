@@ -3,8 +3,9 @@
 // created by magic_pri on 2024-6-25
 //
 
-# include "./include/scheduler.hpp"
-# include "./include/utils.hpp"
+#include "./include/mutex.hpp"
+#include "./include/scheduler.hpp"
+#include "./include/utils.hpp"
 
 namespace monsoon {
 // 静态全局变量，记录调度器实例等
@@ -39,7 +40,7 @@ Scheduler::Scheduler(size_t threads, bool use_caller, const std::string &name){
         cur_scheduler = this;
 
         // 创建调度协程rootFiber_，其任务为执行Scheduler的run方法（即运行调度器，因此是调度协程）
-        rootFiber_.reset(new Fiber(std::bind(&Scheduler::run, this), 0, false));
+        rootFiber_.reset(new Fiber(std::bind(&Scheduler::run, this), 0, false));   // reset为shared_ptr的方法，替换指针托管的对象
         std::cout << LOG_HEAD << "init caller thread's caller fiber success" << std::endl;
 
         Thread::SetName(name_);
@@ -81,12 +82,48 @@ void Scheduler::setThis() {
 
 /*
 start：启动调度器，提供给外部的接口
-主要功能：启动调度器，创建并初始化线程池，使调度器开始执行调度任务
+主要功能：启动调度器，创建并初始化线程池，使调度器能够开始执行调度任务
 */
 void Scheduler::start() {
     std::cout << LOG_HEAD << "scheduler start" << std::endl;
-    // 2024-6-25
+    // 添加局部互斥锁，保护共享资源
+    Mutex::Lock lock(mutex_);
+    // 检查调度器是否已经停止，如果停止则直接返回
+    if (isStopped_) {
+      std::cout << "scheduler is stopped" << std::endl;
+      return;
+    }
+    // 确保线程池应该是空的
+    CondPanic(threadPool_.empty(), "thread pool should be empty");
+    threadPool_.resize(threadCnt_);   // 根据线程数量确定线程池的大小
+    
+    // 创建线程，加入到线程池
+    for (size_t i = 0; i < threadCnt_; ++i) {
+      threadPool_[i].reset(Thread(std::bind(&Scheduler::run(), this), name_ + "_" + std::to_string(i)));
+      threadIds_.push_back(threadPool_[i]->getId());
+    }
 }
+
+/*
+run：调度器开始调度任务
+主要功能：负责管理和执行调度器的任务，包括：管理任务队列、调度和执行任务、处理空闲状态等
+*/
+scheduler::run() {
+  std::cout << LOG_HEAD << "begin run" << std::endl;
+  set_hook_enable(true);   // TODO
+  setThis();  
+  if (GetThreadId() != rootThread_) { // 当前线程不是caller线程（因为caller线程的主协程（调度协程）已经初始化过了
+    // 初始化主协程
+    cur_thread_fiber = Fiber::GetThis().get();
+  }
+
+  // 创建idle协程，用于空闲时执行idle函数
+  Fiber::ptr idleFiber(new Fiber(std::bind(&Scheduler::idle, this)));
+  Fiber::ptr cbFiber;  // 可重用的协程，用于执行任务回调
+
+
+}
+
 
 
 /*
