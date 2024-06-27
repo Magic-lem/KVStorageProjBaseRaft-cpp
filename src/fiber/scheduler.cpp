@@ -6,10 +6,11 @@
 #include "./include/mutex.hpp"
 #include "./include/scheduler.hpp"
 #include "./include/utils.hpp"
+#include "./include/hook.hpp"
 
 namespace monsoon {
 // 静态全局变量，记录调度器实例等
-static thread_local Scheduler *cur_scheduler = nullptr;    // 指向当前线程的调度器，每个线程都会指向一个调度器，可能存在多个线程指向同一个调度器（共享一个调度器），实现调度器分配和调度协程到不同的线程上执行
+static thread_local Scheduler *cur_scheduler = nullptr;    // 指向当前线程的调度器
 static thread_local Fiber *cur_scheduler_fiber = nullptr;    // 指向当前线程中调度器所在的协程（又称为调度协程、即主协程）
 
 const std::string LOG_HEAD = "[scheduler] ";   // 日志头，用来表明输出日志是由scheduler输出的
@@ -110,7 +111,7 @@ run：调度器开始调度任务
 */
 void Scheduler::run() {
     std::cout << LOG_HEAD << "begin run" << std::endl;
-    set_hook_enable(true);   // TODO
+    set_hook_enable(true);   // 启用hook
     setThis();  
     if (GetThreadId() != rootThread_) { // 当前线程不是caller线程（因为caller线程的主协程（调度协程）已经初始化过了)
         // 初始化主协程
@@ -221,6 +222,37 @@ void Scheduler::stop() {
     isStopped_ = true;  // 设置停止标志
 
     // 对于use_caller模式，stop只能由caller线程执行
+    if (isUseCaller_) {
+        // 疑问？ 为什么这样能保证是caller线程
+        CondPanic(GetThis() == this, "cur thread is not caller thread");    // caller线程是管理调度器的
+    } else {
+        CondPanic(GetThis() != this, "cur thread is work thread");      // 
+    }
+
+    for (size_t i = 0; i < threadCnt_; i++) {
+        tickle();   // 唤醒线程从任务对列中获取任务执行
+    }
+    if (rootFiber_) {
+        tickle();
+    }
+
+    // 在use_caller情况下，应当唤醒调度器协程（rootFiber），以便调度器正确终止。结束后，应该返回调度协程(caller协程，即当前)
+    if (rootFiber_) {
+        rootFiber_->resume();
+        std::cout << "root fiber << end" << std::endl;
+    }
+
+    // 等待所有线程退出
+    std::vector<Thread::ptr> threads;
+    {
+        Mutex::Lock lock(mutex_);   
+        threads.swap(threadPool_);  // 从线程池移动到threas中，清空线程池
+    }
+
+    for (auto &i: threads) {
+        i->join();  // 等待所有线程执行完毕
+    }
+
 }
 
 /*
