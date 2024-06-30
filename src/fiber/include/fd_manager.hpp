@@ -71,7 +71,10 @@ private:
     std::vector<FdCtx::ptr> m_datas;  // 文件句柄集合
 };
 
-typedef Singleton<FdManager> FdMgr; // 单例模式封装FdManager类
+// 单例模式封装FdManager类，使得在整个程序周期内，只存在唯一一个文件管理类实例，且可以被全局访问（FdMgr::GetInstance)
+// 这是由于文件资源是系统级资源，必须在整个程序中集中管理，所有线程和模块都使用相同FdMgr，避免资源冲突和重复管理，避免不一致的情况
+// 同时单例模式避免了重复的对象创建和销毁的过程，减少内存开销
+typedef Singleton<FdManager> FdMgr; 
 
 }
 #endif

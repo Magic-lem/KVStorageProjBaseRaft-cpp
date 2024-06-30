@@ -12,6 +12,7 @@
 #include <sys/types.h>  // pid_t
 #include <sys/syscall.h>    // SYS_gettid
 #include <unistd.h>  // syscall
+#include <stdint.h>
 
 namespace monsoon {
 
@@ -118,12 +119,20 @@ static void CondPanic(bool condition, std::string err){
 GetThreadId
 功能：获得线程ID
 */
-pid_t GetThreadId() {
+static pid_t GetThreadId() {
     return syscall(SYS_gettid); // 直接系统调用
     // return pthread_self();   // pthread封装
 }
 
-
+/*
+GetElapsedMS
+功能：获得系统从启动到当前时刻的毫秒数
+*/
+static uint64_t GetElapsedMS() {
+    struct timespec ts = {0};   // 存储时间的结构体
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);   // 获取从系统启动以来的时间
+    return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;     // 转换为ms
+}
 
 
 

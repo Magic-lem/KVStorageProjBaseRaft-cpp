@@ -89,7 +89,7 @@ public:
     void stop();   // 停止调度器，等待所有任务结束
 
 protected:
-    virtual void tickle();   // 通知调度器任务到达
+    virtual void tickle();   // 通知调度器任务到达，虚函数
     void run();   // 协程调度函数
     virtual void idle();   // 无任务时，执行idle协程
     virtual bool stopping();   // 返回是否可以停止

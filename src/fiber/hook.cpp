@@ -5,6 +5,7 @@
 
 #include "./include/hook.hpp"
 #include <dlfcn.h>  // dlsym, RTLD_NEXT
+#include <errno.h>
 #include <memory>
 
 namespace monsoon {
@@ -77,9 +78,23 @@ static _HOOKIniter hook_initer;  // 定义为静态变量，在main开始之前�
 bool is_hook_enable() { return t_hook_enable; }
 void set_hook_enable(const bool flag) { t_hook_enable = flag; }
 
+
+struct timer_info   // 结构体，保存定时器的状态信息
+{
+  int cancelled = 0;  // 是否被取消
+};
+
+
+
 /*
 do_io：模板函数
 主要作用：封装各种I/O操作，实现超时处理、非阻塞I/O等
+Input: int fd ，文件描述符
+       OriginFun fun，原始I/O函数
+       const char *hook_fun_name，钩子函数名称
+       uint32_t event，事件类型
+       int timeout_so, 超时选项
+       Args &&...agrs，折叠表达式（变参模板）
 */
 template <typename OriginFun, typename... Args>
 static ssize_t do_io(int fd, OriginFun fun, const char *hook_fun_name, uint32_t event, int timeout_so, Args &&...args) {
@@ -87,7 +102,7 @@ static ssize_t do_io(int fd, OriginFun fun, const char *hook_fun_name, uint32_t 
     return fun(fd, std::forward<Args>(args)...);
   }
   // 为当前文件描述符创建上下文ctx
-  FdCtx::ptr ctx = FdMgr::GetInstance()->get(fd);   // FdMgr::GetInstance() 单例实例
+  FdCtx::ptr ctx = FdMgr::GetInstance()->get(fd);   // FdMgr::GetInstance() 单例实例，获取文件描述符上下文信息
   if (!ctx) {
     return fun(fd, std::forward<Args>(args)...);  // 没找到上下文，不使用钩子函数，直接用原始函数执行
   }
@@ -96,22 +111,22 @@ static ssize_t do_io(int fd, OriginFun fun, const char *hook_fun_name, uint32_t 
     errno = EBADF;    // 设置全局变量的值为EBADF，表示无效的文件描述符
     return -1;
   }
-
-  if (!ctx->isSocket() || ctx->getUserNonblock()) {
+  // 钩子函数是针对套接字的
+  if (!ctx->isSocket() || ctx->getUserNonblock()) {   // 不是socket 或者 用户非阻塞模式，直接调用原函数。 因为用户已经显式地确保了I/O操作不会阻塞进程
     return fun(fd, std::forward<Args>(args)...);
   }
   // 获取对应type的fd超时时间
   uint64_t to = ctx->getTimeout(timeout_so);
   std::shared_ptr<timer_info> tinfo(new timer_info);
 
+// 重试逻辑
 retry:
-  ssize_t n = fun(fd, std::forward<Args>(args)...);
+  ssize_t n = fun(fd, std::forward<Args>(args)...);   // 调用原始I/O函数
   while (n == -1 && errno == EINTR) {
     // 读取操作被信号中断，继续尝试
     n = fun(fd, std::forward<Args>(args)...);
   }
-  if (n == -1 && errno == EAGAIN) {
-    // 数据未就绪
+  if (n == -1 && errno == EAGAIN) {   // 表示数据未就绪
     IOManager *iom = IOManager::GetThis();
     Timer::ptr timer;
     std::weak_ptr<timer_info> winfo(tinfo);
