@@ -221,5 +221,135 @@ bool IOManager::delEvent(int fd, Event event) {
     return true;
 }
 
+/*
+bool IOManager::cancelEvent 取消IO事件，
+主要功能：取消事件，取消前会主动触发事件
+*/
+bool IOManager::cancelEvent(int fd, Event event) {
+  RWMutex::ReadLock lock(mutex_);
+  if ((int) fdContexts_.size() < fd) {  // 没有这个文件描述符
+    return false;
+  }
+
+  // 存在这个文件描述符，则找到它对应的事件上下文对象
+  FdContext *fd_ctx = fdContexts_[fd];
+  lock.unlock();
+
+  RWMutex::Lock ctxLock(fid_ctx->mutex);  // 给事件上下文对象加互斥锁，会修改
+  if (!(fd_ctx->events & event)) {  // 不存在指定事件
+    return false;
+  }
+
+  // 存在指定事件，则开始取消
+  Event new_events = (Event)(fid_ctx->events & ~event); // 从events中删除event
+  int op = new_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;   // 根据删除event之后是否还存在事件，决定是执行修改还是删除
+  epoll_event epevent;
+  epevent.events = EPOLLET | new_events;
+  epevent.data.prt = fd_ctx;
+
+  // 注册删除后的事件作为fd文件描述符的监听事件
+  int ret = epoll_ctl(epfd_, op, fd, &epevent);
+  if (ret) {
+    std::cout << "cancelevent: epoll_ctl error" << std::endl;
+    return false;
+  }
+
+  // 删除上下文之前，触发此事件
+  fd_ctx->triggerEvent(event);    // 触发后会自动删除
+  --pendingEventCnt_;
+  return true;
+
+}
+
+/*
+bool IOManager::cancelAll 取消所有事件
+主要功能：取消对文件描述符fd的所有事件监听，删除前触发所有事件
+*/
+bool IOManager::cancelAll(int fd) {
+  RWMutex::ReadLock lock(mutex_);
+  if ((int)fdContexts_.size() <= fd) {  // 没有该文件描述符
+    return false;
+  }
+  FdContext *fd_ctx = fdContexts_[fd];
+  lock.unlock;
+
+  RWMutex::Lock ctxLock(fd_ctx->mutex);
+  if (!fd_ctx->events) {
+    return false;   // 如果不存在事件，直接返回
+  }
+
+  // 创建epoll删除事件  —— 创建空epoll事件
+  int op = EPOLL_CTL_DEL;
+  epoll_event epevent;
+  epevent.events = 0;   // 事件为空
+  epevent.data.ptr = fd_ctx;
+
+  // 注册删除事件 —— 将事件为空的epoll事件注册为fd的监听事件，表示取消对fd文件描述符的事件监听
+  int ret = epoll_ctl(epfd_, op, fd, &epevent);
+  if (ret) {
+    std::cout << "cancelall: epoll_ctl error" << std::endl;
+    return false;
+  }
+
+  // 触发所有fd文件描述符所注册事件（读和写）
+  if (fd_ctx->events & READ) {  // 存在读事件
+    fd_ctx->triggerEvent(READ);
+    --pendingEventCnt_;
+  }
+  if (fd_ctx->events & WRITE) { // 存在写事件
+    fd_ctx->triggerEvent(WRITE);
+    --pendingEventCnt_;
+  }
+
+  // 确保fd所对应的事件全部被取消
+  CondPanic(fd_ctx->events == 0, "fd not totally clear");
+  return true;
+}
+
+/*
+static IOManager *IOManager::GetThis  静态成员函数
+主要作用：获取当前线程的IOManager的实例
+*/
+IOManager *IOManager::GetThis() {
+  return dynamic_cast<IOManager *> (Scheduler::GetThis());
+}
+
+/*
+void IOManager::tickle 
+主要作用：通知调度器有任务到来
+*/
+void IOManager::tickle() {
+  if (!isHasIdleThreads()) {
+    return;  // 没有空闲的线程
+  }
+
+  // 存在空闲的线程，空闲线程应在执行idle协程（阻塞于epoll_wait），则通过管道来使得idle协程中的epoll_wait返回，唤醒idle协程，从而能够检查任务队列，调度任务
+  int rt = write(tickleFds_[1], "T", 1);    // 调用write系统调用，向管道写端写入数据，导致管道在读端会出现可读事件，进而epoll_wait返回
+  CondPanic(rt == 1, "write pipe error");
+}
+
+/*
+void IOManager::idle  空闲协程
+主要作用：调度器无任务可执行时会阻塞等待事件发生
+          当有新事件触发，则退出idle状态，则执行回调函数
+          当有新的调度任务，则退出idle状态，并执行对应任务
+*/
+void IOManager::idle() {
+  const uint64_t MAX_EVENTS = 256;  // 一次最多检测256个就绪事件(epoll监听事件)
+  epoll_event *events = new epoll_event[MAX_EVENTS]();    // 存储事件
+  // 使用 shared_ptr 自动管理 events 数组的生命周期，确保在 idle 方法结束时释放内存，避免内存泄漏
+  std::shared_ptr<epoll_event> shared_events(events, [](epoll_event *ptr) {delete[] ptr;});  // 当shared_events销毁时，同时释放ptr（events）的内存
+
+  while (true) {  // 无限循环，直到调度器退出才会终止
+    // 检查是否可以停止，并获取最近一个定时器超时时间
+    uint64_t next_timeout = 0;
+    if (stopping(next_timeout)) { 
+      std::cout << "name = " << GetName() << "idle stopping exit" << endl;  // 调度器停止，退出循环
+      break;
+    }
+  }
+}
+
+
 
 }

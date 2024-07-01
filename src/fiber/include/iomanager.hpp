@@ -73,9 +73,9 @@ protected:
 
     void tickle() override;  // 通知调度器任务到达，需要调度
     bool stopping() override;   // 判断IOManager是否可以停止
-    void idle() override;       // idle协程
+    void idle() override;       // idle状态
 
-    void stopping(uint64_t &timeout);    // 判断IOManager是否可以停止，并获取最近一个定时器超时时间
+    bool stopping(uint64_t &timeout);    // 判断IOManager是否可以停止，并获取最近一个定时器超时时间
 
     void OnTimerInsertedAtFront() override; // 定时器插入到了最前面的额外处理
 
