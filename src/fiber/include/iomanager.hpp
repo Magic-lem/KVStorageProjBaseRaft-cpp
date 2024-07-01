@@ -28,7 +28,7 @@ struct EventContext {
 
 /*
 FdContext
-主要作用：封装某个文件描述符的各事件以及事件的上下文信息
+主要作用：封装某个文件描述符的各事件以及事件上下文信息
 */
 class FdContext {
    

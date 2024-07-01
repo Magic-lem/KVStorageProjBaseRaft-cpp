@@ -336,7 +336,7 @@ void IOManager::idle  空闲协程
 */
 void IOManager::idle() {
   const uint64_t MAX_EVENTS = 256;  // 一次最多检测256个就绪事件(epoll监听事件)
-  epoll_event *events = new epoll_event[MAX_EVENTS]();    // 存储事件
+  epoll_event *events = new epoll_event[MAX_EVENTS]();    // 用来存储已发生的事件
   // 使用 shared_ptr 自动管理 events 数组的生命周期，确保在 idle 方法结束时释放内存，避免内存泄漏
   std::shared_ptr<epoll_event> shared_events(events, [](epoll_event *ptr) {delete[] ptr;});  // 当shared_events销毁时，同时释放ptr（events）的内存
 
@@ -347,9 +347,148 @@ void IOManager::idle() {
       std::cout << "name = " << GetName() << "idle stopping exit" << endl;  // 调度器停止，退出循环
       break;
     }
+
+    // 阻塞等待，等待事件发生 或者 定时器超时
+    int ret = 0;
+    do {
+      static const int MAX_TIMEOUT = 5000;
+
+      // 设置超时时间最大不超过5000ms
+      if (next_timeout != ~0ull) {
+        next_timeout = std::min((int)next_timeout, MAX_TIMEOUT);    
+      } else {
+        next_timeout = MAX_TIMEOUT;
+      }
+
+      // 阻塞等待事件就绪
+      ret = epoll_wait(epfd_, events, MAX_EVENTS, (int)next_timeout); // 阻塞，直到事件发生或者定时器超时，才会返回
+
+      if (ret < 0) {   // 返回值为-1表示发生了错误
+        if (errno == EINTR) { // 全局变量errno为EINTR，说明系统调用被中断，并不是致命错误，继续等待
+          continue;
+        }
+        // 否则报错退出阻塞等待
+        std::cout << "epoll_wait [" << epfd_ << "] errno, err: " <errno << std::endl;
+        break;  // 退出等待循环
+      } else {  // =0时，表示等待超时没有发生事件，此时退出等待； >0时表示成功返回，返回值为触发的事件数，同样退出等待
+        break;
+      }
+    } while (true);
+
+    // 收集所有超时的定时器，执行这些定时器的回调函数
+    std::vector<std::function<void()>> cbs;
+    listExpiredCb(cbs);
+    if (!cbs.empty()) {
+      for (const auto &cb: cbs) {
+        scheduler(cb);   // 添加到任务队列中
+      }
+      cbs.clear();    // 清空
+    }
+
+    // 处理事件（如果存在事件被触发）
+    for (int i = 0; i < ret; i++) {
+      epoll_event &event = events[i]; // events存储的是被触发的事件
+      if (event.data.fd == tickleFds_[0]) { // 事件是管道读事件，说明有新的任务
+        uint8_t dummy[256];
+        while (read(tickleFds_[0], dummy, sizeof(dummy)) > 0);  // 阻塞读取管道数据，直到读取完成
+        continue;
+      }
+
+      // 否则，则不是管道读事件，不是新增任务
+      // 首先获得FdContext
+      FdContext *fd_ctx = (FdContext *)event.data.ptr;
+      Mutex::Lock lock(fd_ctx->mutex);
+
+      // 检查是否是错误事件、或挂起事件（对端关闭）
+      if (event.events & (EPOLLERR | EPOLLHUP)) {
+        std::cout << "error events" << std::endl;
+        event.events |= (EPOLLIN | EPOLLOUT) & fd_ctx->events;   // 如果是错误或挂起事件，则重新将该文件上下文中注册的读写事件加入到当前事件，后续会直接触发
+      }
+
+      // 获得该文件描述符上下文中实际要发生的事件
+      int real_events = NONE;
+      if (event.events & EPOLLIN) {
+        real_events |= READ;
+      }
+      if (event.events & EPOLLOUT) {
+        real_events |= WRITE;
+      }
+      // 检查实际发生的事件是否被fd_ctx注册
+      if ((fd_ctx->events & real_events) == NONE) { // 没有被注册的
+        continue;   // 不用处理，直接下一个事件
+      }
+
+      // 实际发生的事件存在被注册的，则触发该事件，同时将剩下的事件重新加入到epoll_wait
+      int left_events = (fd_ctx->events & !real_events);  // 剩下的事件
+      int op = left_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
+      event.events = EPOLLET | left_events;
+
+      int ret2 = epoll_ctl(epfd_, op, fd, &event.events);  // 将剩下的事件重新加入到epoll_wait
+      if (ret2) {
+        std::cout << "epoll wait [" << epfd_ << "] errno, err: " << errno << std::endl;
+        continue;
+      }
+
+      // 触发事件，将事件对应的回调函数或协程其加入到任务列表
+      // TODO: 这里是否并没有充分检查real_events中的事件都被注册？  因为上面只能保证fd_ctx->events和real_events有交集
+      if (real_events & READ) {
+        fd_ctx->triggerEvent(READ);
+        --pendingEventCnt_;
+      }
+      if (real_events & WRITE) {
+        fd_ctx=>triggerEvent(WRITE);
+        --pendingEventCnt_;
+      }
+    }
+
+    // 事件处理完毕，idle协程yield让出执行权，使得调度协程可以去调度新加入的任务
+    Fiber::ptr cur = Fiber::GetThis();
+    auto raw_ptr = cur.get();
+    cur.reset();    // 重置共享指针
+    raw_ptr->yield();   // 让出执行权
   }
 }
 
+/*
+bool IOManager::stopping() 
+主要作用：判断IOManager（作为调度器）是否可以停止
+*/
+bool IOManager::stopping() {
+  uint64_t timeout = 0;
+  return stopping(timeout);
+}
+
+/*
+bool IOManager::stopping(uint64_t &)
+主要作用：判断IOManager（作为调度器）是否可以停止，并获取最近一个定时器超时时间
+*/
+bool IOManager:stopping(uint64_t &timeout) {
+  timeout = getNextTimer();
+  // 所有待调度的I/O事件执行结束后，才允许退出
+  return timeou ~0ull && pendingEventCnt_ == 0 && Scheduler::stopping();
+}
+
+/*
+void IOManager::contextResize
+主要作用：调整存储上下文信息封装对象的数组fdContexts_的大小，为新扩大的位置初始化一个上下文信息封装对象
+*/
+void IOManager::contextResize(size_t size) {
+  fdContexts_.resize(size_t size);
+  for (size_t i = 0; i < fdContexts_.size(); ++i) {
+    if (!fdContexts_[i]) {  // 若不存在对象，则初始化一个
+      fdContexts_[i] = new FdContext;
+      fdContexts_->fd = i;  // 数组的索引是用的文件描述符，所以这里可以直接将描述符设为i
+    }
+  }
+}
+
+/*
+void IOManager::OnTimerInsertedAtFront()
+主要作用：定时器插入到了最前面的额外处理，即紧急定时器，则需要唤醒空闲线程，使其及时处理这个新的定时器任务
+*/
+void IOManager::OnTimerInsertedAtFront() {
+  tickle();  // 可能会比普通定时器到时间时的唤醒更加迅速和紧急，因为它需要尽快处理插入最前面的定时器
+}
 
 
 }

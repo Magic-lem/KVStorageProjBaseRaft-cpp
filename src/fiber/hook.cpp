@@ -123,9 +123,11 @@ static ssize_t do_io(int fd, OriginFun fun, const char *hook_fun_name, uint32_t 
 retry:
   ssize_t n = fun(fd, std::forward<Args>(args)...);   // 调用原始I/O函数
   while (n == -1 && errno == EINTR) {
-    // 读取操作被信号中断，继续尝试
+    // 读取操作被信号中断，继续尝试直到成功
     n = fun(fd, std::forward<Args>(args)...);
   }
+  
+  // 处理非阻塞情况下的数据未就绪 
   if (n == -1 && errno == EAGAIN) {   // 表示数据未就绪
     IOManager *iom = IOManager::GetThis();
     Timer::ptr timer;
