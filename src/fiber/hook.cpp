@@ -112,14 +112,15 @@ static ssize_t do_io(int fd, OriginFun fun, const char *hook_fun_name, uint32_t 
     return -1;
   }
   // 钩子函数是针对套接字的
-  if (!ctx->isSocket() || ctx->getUserNonblock()) {   // 不是socket 或者 用户非阻塞模式，直接调用原函数。 因为用户已经显式地确保了I/O操作不会阻塞进程
+  if (!ctx->isSocket() || ctx->getUserNonblock()) {   // 不是socket或者用户非阻塞模式，直接调用原函数。
+    // TODO:疑问？ 为什么用户非阻塞要直接返回，那如何处理结果呢？
     return fun(fd, std::forward<Args>(args)...);
   }
   // 获取对应type的fd超时时间
   uint64_t to = ctx->getTimeout(timeout_so);
   std::shared_ptr<timer_info> tinfo(new timer_info);
 
-// 重试逻辑
+// 非阻塞情况下的重试逻辑
 retry:
   ssize_t n = fun(fd, std::forward<Args>(args)...);   // 调用原始I/O函数
 
@@ -128,7 +129,7 @@ retry:
     n = fun(fd, std::forward<Args>(args)...);
   }
   
-  // 错误情况：若数据未就绪，非阻塞模式则通过注册事件监听的方式让出执行权，等事件触发后返回执行。或直到超时也未完成，则返回错误信息
+  // 错误情况：若数据未就绪，则通过注册事件监听的方式让出执行权，等事件触发后返回执行。或直到超时也未完成，则返回错误信息
   if (n == -1 && errno == EAGAIN) {   // 表示数据未就绪
     IOManager *iom = IOManager::GetThis();
     Timer::ptr timer;
@@ -245,7 +246,7 @@ int nanosleep(const sturct timespec *req, struct timespec *rem) {
 
 /*
 socket 函数
-主要作用：创建套接字
+主要作用：创建套接字，对Linux socket函数的钩子封装
 输入参数：domain，协议域；type，套接字类型；protocol，协议。
 */
 int socket(int domain, int type, int protocol) {
@@ -265,15 +266,16 @@ int socket(int domain, int type, int protocol) {
 }
 
 /*
-connet_with_timeout 带有超时处理的连接函数，连接到指定的套接字地址
+connet_with_timeout 带有超时处理的连接函数，连接到指定的套接字地址（对Linux网络编程中的connect函数钩子封装）
 主要作用：在非阻塞模式下调用系统的 connect，并使用定时器和事件驱动机制来处理超时和事件通知
 参数：
     fd：文件描述符，指向需要连接的套接字。
     addr：指向 sockaddr 结构，包含目标地址。
     addrlen：地址的长度。
     timeout_ms：超时时间，单位为毫秒。
+注意：本函数逻辑更复杂，所以没有使用do_io函数模板
 */
-int connect_with_timeout(int fd, const struct sockaddr *addr, socklen_t addrlen, uint64_t timeout_ms)
+int connect_with_timeout(int fd, const struct sockaddr *addr, socklen_t addrlen, uint64_t timeout_ms) {
   if (!t_hook_enable) {
     return connect_f(fd, addr, addrlen);
   }
@@ -335,10 +337,316 @@ int connect_with_timeout(int fd, const struct sockaddr *addr, socklen_t addrlen,
       errno = tinfo->cancelled;
       return -1;
     }
-  } else {  // 添加事件
+  } else {  // 添加事件失败
+    if (timer) {
+      timer->cancel();
+    }
+    std::cout << "connect addEvent(" << fd <<" , WORITE) error" << std::endl;
+  }
+  
+  // 检查连接状态(套接字可写，不能保证连接一定成功建立，需要排查)
+  int error = 0;
+  socklen_t len = sizeof(int);
 
+  // 首先getsockopt函数获取套接字错误状态
+  if (-1 == getsockopt(fd, SOL_SOCKETM, SO_ERROR, &error, &len)) {
+    // 返回-1，说明获取套接字错误状态失败
+    return -1;
   }
 
+  // 获取成功后，error中保存了套接字的错误状态，检查
+  if (error) {
+    // 存在错误
+    errno = error;
+    return -1;
+  } else {
+    // 没有错误，连接成功
+    return 0;
+  }
 }
+
+/*
+connect 连接函数
+主要作用：与connect_with_timeout类似，但是是用默认的超时时间
+输入参数：
+        sockfd，套接字描述符；
+        addr，连接目标地址；
+        addrlen，地址长度。
+*/
+int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
+  return monsoon::connect_with_timeout(sockfd, addr, addrlen, s_connect_timeout);
+}
+
+/*
+accept 接收函数，对Linux accept函数的钩子封装
+主要作用：用于接受来自监听套接字的连接请求，返回一个新的套接字描述符，用于与客户端进行通信。原有的套接字继续监听
+输入参数
+    int s：监听套接字描述符。这个套接字已经绑定到一个特定的地址并且正在监听连接请求。
+    struct sockaddr addr：指向一个sockaddr结构体的指针，在返回时该结构体将被填充为已连接客户端的地址信息。
+    socklen_t addrlen：指向一个socklen_t变量的指针，该变量最初包含addr的长度，并且在返回时被设置为客户端地址的实际长度。
+*/
+int accept(int s, struct sockaddr *addr, socklen_t *addrlen) {
+  int fd = do_io(s, accept_f, "accept", READ, SO_RCVtimeo, addr, addrlen);  // fd为新的套接字描述符
+  if (fd > 0) {
+    FdMgr::GetInstance()->get(fd, true);  // 创建获得fd的上下文信息
+  }
+  return fd;
+}
+
+/*
+read 函数
+功能: 从文件描述符 fd 读取最多 count 个字节到缓冲区 buf 中。
+输入参数:
+    int fd: 文件描述符。
+    void *buf: 目标缓冲区。
+    size_t count: 要读取的字节数
+*/
+ssize_t read(int fd, void *buf, size_t count) { 
+  return do_io(fd, read_f, "read", READ, SO_RCVTIMEO, buf, count); 
+}
+
+/*
+readv 函数
+功能: 从文件描述符 fd 读取数据到多个缓冲区 iov 中，iovcnt 是缓冲区数组的长度。
+输入参数:
+    int fd: 文件描述符。
+    const struct iovec *iov: 缓冲区数组。
+    int iovcnt: 缓冲区数组的长度。
+*/
+ssize_t readv(int fd, const struct iovec *iov, int iovcnt) {
+  return do_io(fd, readv_f, "readv", READ, SO_RCVTIMEO, iov, iovcnt);
+}
+
+/*
+recv 函数
+功能: 从套接字 sockfd 接收数据到缓冲区 buf，最多接收 len 个字节，flags 为接收选项。
+输入参数:
+    int sockfd: 套接字文件描述符。
+    void *buf: 缓冲区。
+    size_t len: 缓冲区长度。
+    int flags: 接收选项。
+*/
+ssize_t recv(int sockfd, void *buf, size_t len, int flags) {
+  return do_io(sockfd, recv_f, "recv", READ, SO_RCVTIMEO, buf, len, flags);
+}
+
+/*
+recvfrom 函数
+功能: 从套接字 sockfd 接收数据到缓冲区 buf，同时获取数据来源地址 src_addr。
+输入参数:
+    int sockfd: 套接字文件描述符。
+    void *buf: 缓冲区。
+    size_t len: 缓冲区长度。
+    int flags: 接收选项。
+    struct sockaddr *src_addr: 源地址结构体。
+    socklen_t *addrlen: 源地址结构体长度。
+*/
+ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen) {
+  return do_io(sockfd, recvfrom_f, "recvfrom", READ, SO_RCVTIMEO, buf, len, flags, src_addr, addrlen);
+}
+
+/*
+recvmsg 函数
+功能: 从套接字 sockfd 接收消息到消息头结构体 msg 中。
+输入参数:
+    int sockfd: 套接字文件描述符。
+    struct msghdr *msg: 消息头结构体。
+    int flags: 接收选项。
+*/
+ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags) {
+  return do_io(sockfd, recvmsg_f, "recvmsg", READ, SO_RCVTIMEO, msg, flags);
+}
+
+/*
+write 函数
+功能: 将缓冲区 buf 中最多 count 个字节写入文件描述符 fd。
+输入参数:
+    int fd: 文件描述符。
+    const void *buf: 缓冲区。
+    size_t count: 要写入的字节数。
+*/
+ssize_t write(int fd, const void *buf, size_t count) {
+  return do_io(fd, write_f, "write", WRITE, SO_SNDTIMEO, buf, count);
+}
+
+/*
+writev 函数
+功能: 将多个缓冲区 iov 中的数据写入文件描述符 fd，iovcnt 是缓冲区数组的长度。
+输入参数:
+    int fd: 文件描述符。
+    const struct iovec *iov: 缓冲区数组。
+    int iovcnt: 缓冲区数组的长度。
+*/
+ssize_t writev(int fd, const struct iovec *iov, int iovcnt) {
+  return do_io(fd, writev_f, "writev", WRITE, SO_SNDTIMEO, iov, iovcnt);
+}
+
+/*
+send 函数
+功能: 将缓冲区 msg 中最多 len 个字节的数据发送到套接字 s，flags 为发送选项。
+输入参数:
+    int s: 套接字文件描述符。
+    const void *msg: 缓冲区。
+    size_t len: 缓冲区长度。
+    int flags: 发送选项。
+*/
+ssize_t send(int s, const void *msg, size_t len, int flags) {
+  return do_io(s, send_f, "send", WRITE, SO_SNDTIMEO, msg, len, flags);
+}
+
+/*
+sendto 函数
+功能: 将缓冲区 msg 中的数据发送到指定的套接字地址 to。
+输入参数:
+    int s: 套接字文件描述符。
+    const void *msg: 缓冲区。
+    size_t len: 缓冲区长度。
+    int flags: 发送选项。
+    const struct sockaddr *to: 目标地址。
+    socklen_t tolen: 目标地址长度。
+*/
+ssize_t sendto(int s, const void *msg, size_t len, int flags, const struct sockaddr *to, socklen_t tolen) {
+  return do_io(s, sendto_f, "sendto", WRITE, SO_SNDTIMEO, msg, len, flags, to, tolen);
+}
+
+/*
+sendmsg 函数
+功能: 将消息头结构体 msg 中的数据发送到套接字 s。
+输入参数:
+    int s: 套接字文件描述符。
+    const struct msghdr *msg: 消息头结构体。
+    int flags: 发送选项。
+*/
+ssize_t sendmsg(int s, const struct msghdr *msg, int flags) {
+  return do_io(s, sendmsg_f, "sendmsg", WRITE, SO_SNDTIMEO, msg, flags);
+}
+
+/*
+close 函数
+功能: 关闭文件描述符 fd。
+输入参数:
+    int fd: 文件描述符。
+*/
+int close(int fd) {
+  if (!t_hook_enable) {
+    return close_f(fd);
+  }
+
+  // 清理与该文件描述符有关的上下文信息和事件
+  FdCtx::ptr ctx = FdMgr::GetInstance()->get(fd);   // 获得文件描述符上下文
+  if (ctx) {
+    auto iom = IOManager::GetThis();
+    if (iom) {
+      iom->cancelAll(fd);   // 删除该文件描述符上的所有事件
+    }
+    FdMgr::GetInstance()->del(fd);  // 删除该文件描述符上下文
+  }
+
+  return close_f(fd); 
+}
+
+/*
+fcntl： 对fcntl系统调用的封装，控制文件描述符属性
+功能：控制文件描述符属性，如设置文件描述符为非阻塞模式、获取或设置文件描述符标志、复制文件描述符
+输入参数:
+    fd: 文件描述符。
+    cmd: 控制命令，指定要执行的操作。
+    ...: 可变参数，根据 cmd 的不同传入不同的参数。
+*/
+int fcntl(int fd, int cmd, .../* arg */) {
+  // 由于使用了变参，需要处理
+  va_list va;
+  va_start(va,cmd);
+
+  // 根据cmd不同进行不同的处理
+  switch (cmd) {
+    case F_SETFL:   // 设置文件描述符标志
+    { 
+      int arg = va_arg(va, int);  // 获取int类型变长参数的值（依次获取，会获取最前面的），即要设置的标志值
+      va_end(va); // 将va重置为NULL
+      
+      FdCtx::ptr ctx = FdMgr::GetInstance()->get(fd);
+      // 检查文件描述符上下文的有效性
+      // TODO：疑问？ 这里的用户非阻塞模式和系统非阻塞模式的区别？   
+      if (!ctx || ctx->isClose() || !ctx->isSocket()) { // 如果上下文无效、文件描述符已关闭、不是套接字，则直接调用系统调用
+        // 对于不是套接字的文件描述符，不应该进行非阻塞标志的处理或其他特定于套接字的操作，而是应该尽快地交给操作系统处理
+        return fcntl_f(fd, cmd, arg);
+      }
+      ctx->setUserNonblock(arg & O_NONBLOCK);   // 如果参数arg中包含O_NONBLOCK标志，则设置用户非阻塞标志
+
+      // 调整标志值,确保了在调用 fcntl 时，arg 中的 O_NONBLOCK 状态与实际系统设置的非阻塞状态一致。
+      if (ctx->getSysNonblock()) {  // 如果系统设置了非阻塞，则在arg中添加O_NONBLOCK标志
+        arg |= O_NONBLOCK;
+      } else {    // 否则删除O_NONBLOCK标志
+        arg &= ~O_NONBLOCK;
+      }
+      return fcntl_f(fd, cmd, arg);
+    } 
+    break;
+    case F_GETFL: // 获取文件描述符标志
+    {
+      va_end(va);
+      int arg = fcntl_f(fd, cmd);  // 获取标志值
+
+      FdCtx::ptr ctx = FdMgr::GetInstance()->get(fd); // 获取上下文
+      // 检查上下文
+      if (!ctx || ctx->isClose() || !ctx->isSocket()) {
+        return arg;
+      }
+
+      // 是否阻塞取决于用户层面非阻塞标志
+      if (ctx->getUserNonblock()) {
+        return arg | O_NONBLOCK;
+      } else {
+        return arg & ~O_NONBLOCK;
+      }
+    }
+    break;
+    // 以下尚未实现
+    case F_DUPFD:
+    case F_DUPFD_CLOEXEC:
+    case F_SETFD:
+    case F_SETOWN:
+    case F_SETSIG:
+    case F_SETLEASE:
+    case F_NOTIFY:
+    #ifdef F_SETPIPE_SZ   // 如果定义了这个宏
+      case F_SETPIPE_SZ:  // 应用于管道文件描述符，修改管道的buffer大小
+    #endif
+    {
+      int arg = va_arg(va, int);
+      va_end(va);
+      return fcntl_f(fd, cmd, arg);
+    }
+    break;
+    case F_GETFD:
+    case F_GETOWN:
+    case F_GETSIG:
+    case F_GETLEASE:
+    #ifdef F_GETPIPE_SZ
+      case F_GETPIPE_SZ:  // 应用于管道文件描述符，获得管道的buffer大小
+    #endif
+    {
+      va_end(va);
+      return fcntl_f(fd, cmd);
+    }
+    break;
+    case F_SETLK:
+    case F_SETLKW:
+    case F_GETLK: // 判断文件（记录）是否可以上struct flock*类型的锁
+    {
+      struct flock *arg = va_arg(va, struct flock *);
+      va_end(va);
+      return fcntl_f(fd, cmd, arg);
+    }
+    break;
+    case F_GETOWN_EX:
+    case F_SETOWN_EX: // 设定属主
+    {
+        // TODO .....
+    }
+  }
+}
+
 
 }
