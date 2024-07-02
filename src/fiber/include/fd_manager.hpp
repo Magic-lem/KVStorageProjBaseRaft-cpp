@@ -57,7 +57,7 @@ private:
     uint64_t m_sendTimeout;   // 写超时事件（单位：ms）
 };
 
-// 文件描述符上下文管理类
+// 文件描述符管理类
 class FdManager {
 public:
     typedef RWMutex RWMutexType;  // 读写锁
