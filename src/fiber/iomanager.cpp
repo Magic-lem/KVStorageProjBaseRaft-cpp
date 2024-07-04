@@ -390,7 +390,7 @@ void IOManager::idle() {
       epoll_event &event = events[i]; // events存储的是被触发的事件
       if (event.data.fd == tickleFds_[0]) { // 事件是管道读事件，说明有新的任务
         uint8_t dummy[256];
-        while (read(tickleFds_[0], dummy, sizeof(dummy)) > 0);  // 阻塞读取管道数据，直到读取完成
+        while (read(tickleFds_[0], dummy, sizeof(dummy)) > 0);  // 阻塞读取管道数据，直到读取完成。（边缘触发模式，循环读取直到 EAGAIN 错误）
         continue;
       }
 
@@ -423,7 +423,7 @@ void IOManager::idle() {
       int op = left_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
       event.events = EPOLLET | left_events;
 
-      int ret2 = epoll_ctl(epfd_, op, fd, &event.events);  // 将剩下的事件重新加入到epoll_wait
+      int ret2 = epoll_ctl(epfd_, op, fd, &event.events);  // 将剩下的事件重新加入到epoll_wait，确保边缘触发模式下事件不会丢失。
       if (ret2) {
         std::cout << "epoll wait [" << epfd_ << "] errno, err: " << errno << std::endl;
         continue;

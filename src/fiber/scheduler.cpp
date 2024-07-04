@@ -232,7 +232,7 @@ void Scheduler::stop() {
     for (size_t i = 0; i < threadCnt_; i++) {
         tickle();   // 唤醒线程从任务对列中获取任务执行
     }
-    if (rootFiber_) {
+    if (rootFiber_) {   
         tickle();
     }
 

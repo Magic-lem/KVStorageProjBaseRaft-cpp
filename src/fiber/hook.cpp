@@ -641,12 +641,84 @@ int fcntl(int fd, int cmd, .../* arg */) {
     }
     break;
     case F_GETOWN_EX:
-    case F_SETOWN_EX: // 设定属主
+    case F_SETOWN_EX: // 设定文件描述符属主，当文件描述符上可执行IO操作时会通知指定的进程或进程组 （一般用于异步I/O）
     {
-        // TODO .....
+        struct f_owner_exlock *arg = va_arg(va, struct f_owner_exlock *);
+        va_end(va);
+        return fcntl_f(fd, cmd, arg);
     }
+    break;
+    default:
+      va_end(va);
+      return fcntl_f(fd, cmd);
   }
 }
 
+/*
+ioctl  对系统函数对 ioctl 函数的一个封装
+主要作用： 处理非阻塞模式的设置，同时保留了用户层面的非阻塞状态
+输入参数：
+    int d：文件描述符（通常是一个套接字）。
+    unsigned long int request：指定请求的操作码。
+    ...：变长参数，具体取决于请求操作码。
+*/
+int ioctl(int d, unsigned long int request, ...) {
+  va_list va;
+  va_start(va, request);
+  void *arg = va_arg(va, void *);
+  va_end(va);
 
+  if (request == FIONBIO) {   // 设置非阻塞模式
+    bool user_nonblock = !!(int *)arg;  // arg先转换为整形指针，再由双重逻辑非运算!!转换为布尔值
+    // 获取文件描述符上下文信息
+    FdCtx::ptr ctx = FdMgr::GetInstance()->get(d);
+    if (!ctx || ctx->isClose() || !ctx->isSocket()) {
+      return ioctl_f(d, request, arg);
+    }
+    ctx->setUserNonblock(user_nonblock);
+  }
+}
+
+/*
+getsockopt 函数
+主要作用：获取指定套接字选项的当前值，并将其存储在 optval 指向的缓冲区
+输入参数：
+    sockfd：套接字描述符。
+    level：选项所在的协议层，常用的是 SOL_SOCKET。
+    optname：需要获取的选项名称。
+    optval：指向返回选项值的缓冲区。
+    optlen：指向包含缓冲区大小的变量。
+*/
+int getsockopt(int sockfd, int level, int optname, int optval, int optlen) {
+  return getsockopt_f(sockfd, level, optname, optval, optlen);
+}
+
+
+/*
+setsockopt函数
+主要作用：设置指定套接字选项的值，通过 optval 和 optlen 提供的新值更新套接字选项
+输入参数：
+    sockfd：套接字描述符。
+    level：选项所在的协议层。常用值包括 SOL_SOCKET（套接字层），IPPROTO_TCP（TCP 层），IPPROTO_IP（IP 层）等。
+    optname：要获取的选项名称。根据 level 的不同，常用选项包括 SO_RCVBUF（接收缓冲区大小），SO_SNDBUF（发送缓冲区大小），SO_RCVTIMEO（接收超时），SO_SNDTIMEO（发送超时）等。
+    optval：指向存储选项值的缓冲区。
+    optlen：指向存储选项值大小的变量，调用后会更新为实际的选项值大小。
+*/
+int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen) {
+  if (!t_hook_enable) {
+    return setsockopt_f(sockfd, level, optname, optval, optlen);
+  }
+  if (level == SOL_SOCKET) {
+    if (optname == SO_RCVTIMEO || optname == SO_SNDTIMEO) {
+      FdCtx::ptr ctx = FdMgr::GetInstance()->get(sockfd);
+      if (ctx) {
+        const timeval *v = (const timeval *)optval;
+        ctx->setTimeout(optname, v->tv_sec * 1000 + v->tv_usec / 1000);
+      }
+    }
+  }
+  return setsockopt_f(sockfd, level, optname, optval, optlen);
+}
+
+}
 }
