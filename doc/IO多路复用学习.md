@@ -26,7 +26,7 @@ CPU 上会运行两种程序，一种是操作系统的内核程序（也称为�
 
 一个应用程序从磁盘上读取文件时，通常分两步走：
 
-![image.png](doc/figures/内核空间和用户空间.png)
+![image.png](./figures/内核空间和用户空间.png)
 
 但是访问磁盘的速度要远远低于访问内存的速度，完全不是一个量级的，所以理论上 read 磁盘的速度要远远慢于 read 内存。要解决这个问题，**内核缓冲区**（Kernel Buffer Cache）就应运而生了。内核缓冲区（准确的说，应该是**内核缓冲区缓存**），其实有两个作用，**缓冲(Buffer) + 缓存(Cache)**。
 
@@ -52,7 +52,7 @@ CPU 上会运行两种程序，一种是操作系统的内核程序（也称为�
 
 不同的就是，内核缓冲区处理的是内核空间和磁盘之间的数据传递，目的是减少访问磁盘的次数；而**<font color='red'>用户缓冲区处理的是用户空间和内核空间的数据传递，目的是减少系统调用的次数</font>**。
 
-![image.png](doc/figures/内核缓冲区和用户缓冲区2.png)
+![image.png](./figures/内核缓冲区和用户缓冲区2.png)
 
 ### 事件 ❓
 
@@ -72,7 +72,7 @@ CPU 上会运行两种程序，一种是操作系统的内核程序（也称为�
 
 ### 服务器文件传输过程
 
-![img](doc/figures/服务器文件传输过程.png)
+![img](./figures/服务器文件传输过程.png)
 
 若是服务器接收客户的请求，红色箭头方向相反。
 
@@ -80,7 +80,7 @@ CPU 上会运行两种程序，一种是操作系统的内核程序（也称为�
 
 ### 内核接收网络数据全过程
 
-![在这里插入图片描述](doc/figures/内核接收网络数据全过程.png)
+![在这里插入图片描述](./figures/内核接收网络数据全过程.png)
 
 1、计算机收到了对端传送的数据（步骤①）；
 
@@ -115,7 +115,7 @@ CPU 上会运行两种程序，一种是操作系统的内核程序（也称为�
 
 `select` 实现多路复用的方式是，将已连接的 Socket 都放到一个**文件描述符集合**（是一个BitsMap，位图），然后调用 `select` 函数将文件描述符集合**拷贝**到内核里，**让内核来检查是否有网络事件产生**，检查的方式很粗暴，就是通过**遍历文件描述符集合**的方式，当检查到有事件产生后，将此 Socket 标记为**可读或可写**， 接着再把整个文件描述符集合**拷贝**回用户态里，然后用户态还需要再通过**遍历**的方法找到可读或可写的 Socket，然后再对其处理。
 
-![img](doc/figures/select.png)
+![img](./figures/select.png)
 
 对于 `select` 这种方式，需要进行<font color='red'> **2 次「遍历」**</font>文件描述符集合，一次是在内核态里，一个次是在用户态里 ，而且还会发生<font color='red'> **2 次「拷贝」**</font>文件描述符集合，先从用户空间传入内核空间，由内核修改后，再传出到用户空间中。
 
@@ -137,7 +137,7 @@ select 使用<font color='red'>**固定长度的 BitsMap，表示文件描述符
 
   使用<font color='red'>**事件驱动的机制**</font>，内核里维护了**一个链表来记录就绪事件**，当某个文件描述符有事件发生时，通过**回调函数**内核会将其加入到这个就绪事件列表中，当用户调用 `epoll_wait()` 函数时，**只会返回有事件发生的文件描述符的个数**，不需要像 select/poll 那样轮询扫描整个 socket 集合，大大提高了检测的效率。
 
-  ![img](doc/figures/epoll.png)
+  ![img](./figures/epoll.png)
 
 ## epoll详解
 
@@ -179,7 +179,7 @@ while(1) {
 
  **epoll_create 创建一个 epoll 对象的时候究竟干了什么事情呢？**
 
-![img](doc/figures/epoll_create.png)
+![img](./figures/epoll_create.png)
 
 如图，主要是创建了一个结构体<font color='red'>`eventpoll`</font>对象，然后对其成员进行初始化。`eventpoll`是`epoll`在内核中的数据结构，包含了 `epoll` 实现所需的各种数据结构和同步机制， 定义如下：
 
@@ -227,7 +227,7 @@ struct rb_root rbr:
 **/
 ```
 
-![img](doc/figures/eventpoor.png)
+![img](./figures/eventpoor.png)
 
 ### epoll_ctl：事件注册函数
 
@@ -310,7 +310,7 @@ struct epoll_event
 
 在红黑树中，保存事件的节点类型
 
-![img](doc/figures/epoll红黑树和拷贝.png)
+![img](./figures/epoll红黑树和拷贝.png)
 
 ### epoll事件驱动触发返回：双向链表
 
