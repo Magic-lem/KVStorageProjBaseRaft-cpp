@@ -20,7 +20,7 @@
 class RpcProvider {
 public:
     // 服务端提供给外部使用的接口
-    void NotifyService(google::protobuf::Service *service);  // 注册一个RPC服务
+    void NotifyService(google::protobuf::Service *service);  // 注册一个RPC服务，服务实例注册到RPC框架中，使得这个服务可以被远程调用
 
     void Run(int nodeIndex, short port);  // 启动RPC服务节点，开始提供RPC远程网络调用服务
 

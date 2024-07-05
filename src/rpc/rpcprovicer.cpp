@@ -34,7 +34,7 @@ void RpcProvider::NotifyService(google::protobuf::Service *service) {
     // 保存每个方法信息
     for (int i = 0; i < methodCnt; i++){
         const google::protobuf::MethodDescriptor *pmethodDesc = pserviceDesc->method(i);
-        std::string method_name = pserviceDesc->name();
+        std::string method_name = pmethodDesc->name();
         service_info.m_methodMap.insert(std::pair(method_name, pmethodDesc));
     }
 
@@ -79,7 +79,7 @@ void RpcProvider::Run(int nodeINdex, short port){
 
     // 配置并启动Muduo库的TCP服务器
     muduo::net::InetAddress address(ip, port);  // 创建IP地址和端口的InetAddress对象
-    // 创建TcpServer对象，使用共享指针指向该对象，与事件循环、IP地址德等关联
+    // 创建TcpServer对象，使用共享指针指向该对象，与事件循环、IP地址等关联
     m_muduo_server = std::make_shared<muduo::net::TcpServer>(&m_eventLoop, address, "RcpProvider");
     // 设置TcpServer对象的回调函数
     m_muduo_server->setConnectionCallback(std::bind(&RpcProvider::onConnection, this, std::placeholders::_1));

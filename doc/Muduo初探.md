@@ -12,7 +12,7 @@ Muduo是由【陈硕】大佬个人开发的TCP网络编程库，基于Reactor�
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/21d3adc169964387ad0fd0c5ee9c0f5f.png#pic_center)
 
-常见的I/O复用方法：select、poll、epoll。其中，epoll是一种`事件驱动`的I/O多路复用的方法。
+常见的I/O复用方法：select、poll、epoll。其中，epoll是一种 `事件驱动`的I/O多路复用的方法。
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/6c1e9ff9a53b46d4bbde92bfa7fe13b6.png#pic_center)
 
@@ -44,30 +44,23 @@ Reactor 模式由 `Reactor 线程`、`Handlers 处理器`两大角色组成，�
 在单线程 Reactor 模式中，`Reactor` 和 `Handler` 都在同一条线程中执行。所有 I/O 操作（包括连接建立、数据读写、事件分发等）、业务处理，都是由一个线程完成的，逻辑非常简单，但也有十分明显的缺陷：
 
 - 一个线程支持处理的连接数非常有限，CPU 很容易打满，**性能方面有明显瓶颈**
-
 - 当多个事件被同时触发时，只要有一个事件没有处理完，其他后面的事件就无法执行，这就会造成**消息积压及请求超时**
-
 - 线程在处理 I/O 事件时，Select **无法同时处理连接建立、事件分发等**操作
-
 - 如果 I/O 线程一直处于满负荷状态，很可能造成**服务端节点不可用**
 
 当其中某个 Handler 阻塞时，会导致其他所有的 Handler 都得不到执行。
 
 在这种场景下，被阻塞的 Handler 不仅仅负责输入和输出处理的传输处理器，还**包括负责新连接监听的 Acceptor 处理器**，可能导致服务器无响应。这是一个非常严重的缺陷，导致单线程反应器模型在生产场景中使用得比较少。
 
-
-
 ### 多线程Reactor模型（Worker线程池）
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/285e1938ff1f47579381a53ac8b17ead.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA5p-P5rK5,size_20,color_FFFFFF,t_70,g_se,x_16#pic_center)
 
-
-
-Reactor 多线程模型**将<font color='red'>`业务逻辑`</font>交给多个线程进行处理**。除此之外，多线程模型其他的操作与单线程模型是类似的，比如**连接建立、IO事件读写以及事件分发**等都是由**一个线程**来完成。
+Reactor 多线程模型**将`<font color='red'>业务逻辑``</font>`交给多个线程进行处理**。除此之外，多线程模型其他的操作与单线程模型是类似的，比如**连接建立、IO事件读写以及事件分发**等都是由**一个线程**来完成。
 
 当客户端有数据发送至服务端时，Select 会监听到可读事件，数据读取完毕后提交到业务线程池中并发处理。一般的请求中，耗时最长的一般是业务处理，所以用一个线程池（worker 线程池）来处理业务操作，在性能上的提升也是非常可观的。
 
-当然，这种模型也有明显缺点，**连接建立、IO 事件读取以及事件分发完全有单线程处理**；比如当**<font color='cornflowerblue'>某个连接通过系统调用正在读取数据，此时相对于其他事件来说，完全是阻塞状态，新连接无法处理、其他连接的 IO、查询 IO 读写以及事件分发都无法完成</font>**。对于像 Nginx、Netty 这种对高性能、高并发要求极高的网络框架，这种模式便显得有些吃力了。因为，<font color='cornflowerblue'>**无法及时处理新连接、就绪的 IO 事件以及事件转发等。**</font>
+当然，这种模型也有明显缺点，**连接建立、IO 事件读取以及事件分发完全有单线程处理**；比如当**`<font color='cornflowerblue'>`某个连接通过系统调用正在读取数据，此时相对于其他事件来说，完全是阻塞状态，新连接无法处理、其他连接的 IO、查询 IO 读写以及事件分发都无法完成`</font>`**。对于像 Nginx、Netty 这种对高性能、高并发要求极高的网络框架，这种模式便显得有些吃力了。因为，`<font color='cornflowerblue'>`**无法及时处理新连接、就绪的 IO 事件以及事件转发等。**`</font>`
 
 ### 主从多线程Reactor模型
 
@@ -78,13 +71,13 @@ Reactor 多线程模型**将<font color='red'>`业务逻辑`</font>交给多个�
 1. 主 Reactor 可以解决同一时间大量新连接，将其注册到从 Reactor 上进行IO事件监听处理
 2. IO事件监听相对新连接处理更加耗时，此处我们可以考虑**使用线程池来处理**。这样能充分利用多核 CPU 的特性，能使更多就绪的IO事件及时处理。
 
-主从多线程模型由**多个 Reactor 线程**组成，每个 Reactor 线程都有独立的 Selector 对象。<font color='red'>**MainReactor 仅负责处理客户端连接的 Accept 事件**</font>，连接建立成功后将新创建的连接对象注册至 SubReactor。再由 <font color='red'>**SubReactor 分配线程池中的 I/O 线程与其连接绑定，它将负责连接生命周期内所有的 I/O 事件**</font>。
+主从多线程模型由**多个 Reactor 线程**组成，每个 Reactor 线程都有独立的 Selector 对象。`<font color='red'>`**MainReactor 仅负责处理客户端连接的 Accept 事件**`</font>`，连接建立成功后将新创建的连接对象注册至 SubReactor。再由 `<font color='red'>`**SubReactor 分配线程池中的 I/O 线程与其连接绑定，它将负责连接生命周期内所有的 I/O 事件**`</font>`。
 
 在海量客户端并发请求的场景下，主从多线程模式甚至可以**适当增加 SubReactor 线程的数量**，从而利用多核能力提升系统的吞吐量。****
 
 ### 总结
 
-Reactor核心是围绕<font color='red'>`事件驱动`</font>模型
+Reactor核心是围绕`<font color='red'>事件驱动``</font>`模型
 
 - 一方面监听并处理IO事件
 - 另一方面将这些处理好的事件分发业务线程处理
@@ -100,23 +93,17 @@ Reactor核心是围绕<font color='red'>`事件驱动`</font>模型
 
 图片和部分内容摘自链接：[高性能网络编程之 Reactor 网络模型（彻底搞懂）_reactor网络模型-CSDN博客](https://blog.csdn.net/ldw201510803006/article/details/124365838)，[Reactor模型详解：单Reactor多线程与主从Reactor多线程 - -零 - 博客园 (cnblogs.com)](https://www.cnblogs.com/-wenli/p/13343397.html#:~:text=主 - 从Reactor多线程 主 - 从 reactor 模式,事件交给 sub-reactor 负责分发。 其中 sub-reactor 的数量，可以根据 CPU 的核数来灵活设置。)，如有侵权，请告知删除。
 
-
-
 ## Muduo基本架构
 
-采用了**<font color='red'>主从多线程reactor模型 + 线程池</font>**的架构。`Main Reactor`只用于监听新的连接，在`accept`之后就会将这个连接分配到`Sub Reactor`上，由`子Reactor`负责连接的事件处理。线程池中维护了两个队列，一个**队伍队列**，一个**线程队列**，外部线程将任务添加到任务队列中，如果线程队列非空，则会唤醒其中一只线程进行任务的处理，相当于是**生产者和消费者模型**。
+采用了**`<font color='red'>`主从多线程reactor模型 + 线程池`</font>`**的架构。`Main Reactor`只用于监听新的连接，在 `accept`之后就会将这个连接分配到 `Sub Reactor`上，由 `子Reactor`负责连接的事件处理。线程池中维护了两个队列，一个**队伍队列**，一个**线程队列**，外部线程将任务添加到任务队列中，如果线程队列非空，则会唤醒其中一只线程进行任务的处理，相当于是**生产者和消费者模型**。
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/1000cea689714585a6efa392958fc354.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA5p-P5rK5,size_20,color_FFFFFF,t_70,g_se,x_16#pic_center)
 
-
-
-
-
 ## Muduo基本代码结构
 
-muduo库有**三个核心组件**支撑一个`Reactor`实现持续的监听一组`fd`，并根据每个`fd`上发生的事件调用相应的处理函数。这三个组件分别是`Channel类`、`Poller/EpollPoller类`以及`EventLoop类`。
+muduo库有**三个核心组件**支撑一个 `Reactor`实现持续的监听一组 `fd`，并根据每个 `fd`上发生的事件调用相应的处理函数。这三个组件分别是 `Channel类`、`Poller/EpollPoller类`以及 `EventLoop类`。
 
-`EventLoop`起到一个驱动循环的功能，`Poller`负责从事件监听器上获取监听结果。而`Channel类`则在其中起到了将`fd`及其相关属性封装的作用，将`fd`及其感兴趣事件和发生的事件以及不同事件对应的回调函数封装在一起，这样在各个模块中传递更加方便。接着EventLoop调用。
+`EventLoop`起到一个驱动循环的功能，`Poller`负责从事件监听器上获取监听结果。而 `Channel类`则在其中起到了将 `fd`及其相关属性封装的作用，将 `fd`及其感兴趣事件和发生的事件以及不同事件对应的回调函数封装在一起，这样在各个模块中传递更加方便。接着EventLoop调用。
 
 ![image](https://img2022.cnblogs.com/blog/2937307/202209/2937307-20220920184001882-1703980542.png)
 
@@ -126,8 +113,8 @@ muduo库有**三个核心组件**支撑一个`Reactor`实现持续的监听一�
 
 > `EventLoop`的工作流程大致如下：
 >
-> 1. 创建一个`EventLoop`对象。
-> 2. 将需要监控的文件描述符和对应的事件类型注册到`EventLoop`中。
+> 1. 创建一个 `EventLoop`对象。
+> 2. 将需要监控的文件描述符和对应的事件类型注册到 `EventLoop`中。
 > 3. 启动事件循环，进入循环体。
 > 4. 在循环体中，使用epoll等系统调用等待事件的发生。
 > 5. 当有事件发生时，调用相应的回调函数来处理这些事件。
@@ -153,13 +140,13 @@ timerQueue_：定时器队列，用于管理定时器事件。
 
 ```cpp
 loop(): 启动事件循环。该方法会进入循环体，不断地等待并处理事件，直到调用quit()方法。
-    
+  
 quit()：  退出事件循环。该方法会设置quit_标志，在安全的时机退出事件循环。
-    
+  
 runInLoop(Functor cb)： 在当前事件循环中执行指定的任务。如果在其他线程中调用该方法，会将任务添加到pendingFunctors_队列中。
-    
+  
 queueInLoop(Functor cb)：将任务添加到待处理任务队列中，在事件循环的下一次迭代时执行。
-    
+  
 updateChannel(Channel channel)： 更新一个Channel，即在Poller中更新该Channel所关注的事件。
 removeChannel(Channel channel)：移除一个Channel，即在Poller中取消对该Channel的关注。
 hasChannel(Channel channel)：检查Poller中是否包含指定的Channel。
@@ -177,15 +164,15 @@ handleError()：处理错误事件。
 
 > **启动事件循环**：
 >
-> - 调用`loop()`方法，进入事件循环。
+> - 调用 `loop()`方法，进入事件循环。
 >
 > **等待事件**：
 >
-> - 调用`Poller`的`poll()`方法等待事件发生。
+> - 调用 `Poller`的 `poll()`方法等待事件发生。
 >
 > **处理事件**：
 >
-> - 遍历活跃的`Channel`列表，调用每个`Channel`的事件处理回调函数。
+> - 遍历活跃的 `Channel`列表，调用每个 `Channel`的事件处理回调函数。
 >
 > **处理定时器事件**：
 >
@@ -193,15 +180,15 @@ handleError()：处理错误事件。
 >
 > **执行待处理任务**：
 >
-> - 调用`doPendingFunctors()`方法，执行在其他线程中添加的任务。
+> - 调用 `doPendingFunctors()`方法，执行在其他线程中添加的任务。
 >
 > **重复循环**：
 >
-> - 重复上述步骤，直到调用`quit()`方法退出事件循环。
+> - 重复上述步骤，直到调用 `quit()`方法退出事件循环。
 
 ### Poller类
 
-`Poller`类是`EventLoop`的一个重要组件，负责具体的I/O多路复用机制的封装。`Poller`类是一个**抽象基类**，它**提供了统一的接口，以便不同的具体实现（如使用`epoll`或`poll`）可以继承并实现这些接口（对应两个派生类：PollPoller和EpollPoller）**。具体使用中会根据环境变量的设置选择是使用epoll还是poll方法。`Poller`类的主要作用是**管理和分发I/O事件**。
+`Poller`类是 `EventLoop`的一个重要组件，负责具体的I/O多路复用机制的封装。`Poller`类是一个**抽象基类**，它**提供了统一的接口，以便不同的具体实现（如使用 `epoll`或 `poll`）可以继承并实现这些接口（对应两个派生类：PollPoller和EpollPoller）**。具体使用中会根据环境变量的设置选择是使用epoll还是poll方法。`Poller`类的主要作用是**管理和分发I/O事件**。
 
 **主要属性**
 
@@ -225,21 +212,21 @@ bool hasChannel(Channel channel) const*： 检查Poller中是否包含指定的C
 
 **主要工作流程**
 
-> **创建并初始化`Poller`**：
+> **创建并初始化 `Poller`**：
 >
-> - 在创建`EventLoop`对象时，会根据系统和配置选择具体的`Poller`实现（如`EPollPoller`或`PollPoller`）。
+> - 在创建 `EventLoop`对象时，会根据系统和配置选择具体的 `Poller`实现（如 `EPollPoller`或 `PollPoller`）。
 >
-> **添加、更新和移除`Channel`**：
+> **添加、更新和移除 `Channel`**：
 >
-> - 通过调用`updateChannel`和`removeChannel`方法，管理`Channel`对象及其关注的事件。
+> - 通过调用 `updateChannel`和 `removeChannel`方法，管理 `Channel`对象及其关注的事件。
 >
 > **等待事件**：
 >
-> - 在事件循环中，调用<font color='red'>`poll`</font>方法等待事件发生，并获取活跃的`Channel`列表。
+> - 在事件循环中，调用`<font color='red'>poll``</font>`方法等待事件发生，并获取活跃的 `Channel`列表。
 >
 > **分发事件**：
 >
-> - 将活跃的事件分发给相应的`Channel`对象，`Channel`对象再调用预先设置的回调函数处理事件。
+> - 将活跃的事件分发给相应的 `Channel`对象，`Channel`对象再调用预先设置的回调函数处理事件。
 
 ### Channel类
 
@@ -276,7 +263,6 @@ readCallback_、writeCallback_、errorCallback_、closeCallback_：一系列的�
    参数：receiveTime，表示事件发生的时间戳。
    实现逻辑：根据 revents_ 的值，依次调用错误、关闭、读、写事件的回调函数。
    ```
-
 2. **setReadCallback**：设置读事件回调函数；**setWriteCallback**：设置写事件回调函数；**setErrorCallback**：设置错误事件回调函数；**setCloseCallback**：设置关闭事件回调函数。
 
    ```cpp
@@ -287,7 +273,6 @@ readCallback_、writeCallback_、errorCallback_、closeCallback_：一系列的�
    用途：将用户定义的回调函数绑定到相应的事件上。
    参数：回调函数对象，使用 std::function 封装。
    ```
-
 3. **事件启用/禁用**
 
    ```cpp
@@ -299,7 +284,6 @@ readCallback_、writeCallback_、errorCallback_、closeCallback_：一系列的�
    用途：启用或禁用 Channel 对特定事件的监听。
    实现逻辑：修改 events_ 的值，并调用 update() 方法将修改通知给 Poller。
    ```
-
 4. **update()**
 
    ```cpp
@@ -310,7 +294,6 @@ readCallback_、writeCallback_、errorCallback_、closeCallback_：一系列的�
        loop_->updateChannel(this);
    }
    ```
-
 5. **remove()**
 
    ```cpp
@@ -321,7 +304,6 @@ readCallback_、writeCallback_、errorCallback_、closeCallback_：一系列的�
        loop_->removeChannel(this);
    }
    ```
-
 6. **tie()**
 
    ```cpp
@@ -334,7 +316,6 @@ readCallback_、writeCallback_、errorCallback_、closeCallback_：一系列的�
        tied_ = true;
    }
    ```
-
 7. **其他辅助方法**
 
    ```cpp
@@ -374,7 +355,6 @@ connetionCallback_、messageCallback_、writeCompleteCallback_、closeCallback_�
    void handleError();
    // 处理读、写、关闭和错误事件，由 Channel 对象调用。
    ```
-
 2. **连接状态的获取和设置**
 
    ```cpp
@@ -384,7 +364,6 @@ connetionCallback_、messageCallback_、writeCompleteCallback_、closeCallback_�
    bool connected() const { return state_ == kConnected; }
    // 获取连接的名称、本地地址、对端地址和连接状态。
    ```
-
 3. **回调函数的设置**
 
    ```cpp
@@ -394,7 +373,6 @@ connetionCallback_、messageCallback_、writeCompleteCallback_、closeCallback_�
    void setCloseCallback(const CloseCallback& cb) { closeCallback_ = cb; }
    // 设置连接、消息、写入完成和关闭的回调函数。
    ```
-
 4. **发送数据**
 
    ```cpp
@@ -402,21 +380,18 @@ connetionCallback_、messageCallback_、writeCompleteCallback_、closeCallback_�
    void send(Buffer* buf);
    // 发送数据，将数据添加到输出缓冲区并调用 `handleWrite` 方法进行实际发送。
    ```
-
 5. **关闭连接**
 
    ```cpp
    void shutdown();
    // 关闭写端，触发连接关闭过程。
    ```
-
 6. **强制关闭**
 
    ```cpp
    void forceClose();
    // 强制关闭连接，不等待缓冲区的数据发送完毕。
    ```
-
 7. **连接建立和销毁**
 
    ```cpp
@@ -449,14 +424,12 @@ newConnectionCallback_：新连接到达时的回调函数。
    用途：启动监听 socket 开始接受新的连接。
    实现逻辑：调用 Socket 对象的 listen 方法，并将 acceptChannel 设置为可读状态以处理新的连接。
    ```
-
 2. **设置回调函数**
 
    ```cpp
    void setNewConnectionCallback(const NewConnectionCallback& cb) { newConnectionCallback_ = cb; }
    用途：设置新连接到达时的回调函数。
    ```
-
 3. **处理新连接**
 
    ```cpp
@@ -503,8 +476,6 @@ void removeConnection(const TcpConnectionPtr& conn);
 void removeConnectionInLoop(const TcpConnectionPtr& conn);
 ```
 
-
-
 ## Muduo简单使用
 
 **使用muduo库编写一个简单的echo回显服务器**
@@ -525,8 +496,8 @@ public:
     // 构造函数，输入参数
     // loop：EentLoop类指针，用于事件循环
     // listenAddr: InetAddress类对象，服务端的地址结构
-    EchoServer(muduo::net::EventLoop* loop, const muduo::net::InetAddress& listenAddr);    
-    
+    EchoServer(muduo::net::EventLoop* loop, const muduo::net::InetAddress& listenAddr);  
+  
     void start();
 
 private:
@@ -578,7 +549,7 @@ void EchoServer::onMessage(const muduo::net::TcpConnectionPtr& conn, muduo::net:
     conn->send(msg);
 }
 
-int main(){                            
+int main(){                          
     // 打印日志，输出当前进程的PID
     LOG_INFO << "pid = " << getpid();
 
@@ -606,20 +577,19 @@ int main(){
    ```bash
    # Step1：编译
    g++ main.cpp -lmuduo_net -lmuduo_base -lpthread -std=c++11 -o EchoServer
-   
+
    # Step2：运行
    ./EchoServer
    # 运行成功后显示
    # 20240618 13::44:45.347367Z 34919 INFO  pid = 34919 - main.cpp:72
-   
+
    # Step3：客户端访问
    # 新建一个终端窗口，访问本机器8888端口号
    echo "hello world" | ns localhost 8888
    ```
-
 2. **`loop.loop()`事件循环的作用**
 
-   如果不调用 `loop.loop()`，程序会在 `server.start()` 之后立即退出，服务器将无法接收和处理客户端连接。`loop.loop()` 是事件驱动服务器程序的核心，它使得程序进入事件循环，能够持续处理网络事件，保持服务器运行和响应客户端请求。没有这个调用，服务器将无法正常运行。
+   如果不调用 `loop.loop()`，程序会在 `server.start()` 之后立即退出，服务器将无法接收和处理客户端连接。`loop.loop()` 是事件驱动服务器程序的核心，它使得程序进入**事件循环**，能够持续处理网络事件，保持服务器运行和响应客户端请求。没有这个调用，服务器将无法正常运行。（循环内部是通过`Channel`和`Poller`来实现对文件描述符的事件监听）
 
    Muduo 库中的 `EventLoop` 类封装了 I/O 多路复用和事件处理机制，提供了更高层次的接口。`loop.loop()` 实现了一个高效的事件循环，具备以下优势：
 
@@ -643,4 +613,3 @@ int main(){
 [C++Muduo网络库：简介及使用-CSDN博客](https://blog.csdn.net/qq_42441693/article/details/128923253)
 
 [C++ muduo网络库知识分享01 - Linux平台下muduo网络库源码编译安装-CSDN博客](https://blog.csdn.net/QIANGWEIYUAN/article/details/89023980)
-
