@@ -263,8 +263,9 @@ void RpcProvider::onMessage(const muduo::net::TcpConnectionPtr &conn,
                             muduo::net::Buffer* buffer, muduo::Timestamp time) {
     std::string recv_buf = buffer->retrieveAllAsString();  // 从缓冲区中提取所有数据作为字符串
     // 使用protobuf的ArrayInputStream和CodedInputStream解析接收到的数据，用于处理序列化和反序列化的数据流
+    // 进行反序列化
     google::protobuf::io::ArrayInputStream array_input(recv_buf.data(), recv_buf.size());  // 将原始字节数组封装为一个输入流，以便后续通过更高级的输入流类解析
-    google::protobuf::io::CodedInputStream coded_input(&array_input);  // 根据编码规则，解析数据，提取出实际的字段值
+    google::protobuf::io::CodedInputStream coded_input(&array_input);  // 根据编码规则，解析数据，反序列化提取出实际的字段值
 
     uint32_t header_size{}; // 标准无符号32位整形变量
     coded_input.ReadVarint32(&header_size);   // 读取头部大小（4字节，32位）
@@ -328,3 +329,67 @@ void RpcProvider::onMessage(const muduo::net::TcpConnectionPtr &conn,
 }
 ```
 
+- **读取请求消息并反序列化**
+
+  客户端中传过来的请求消息是经过`protobuf`序列化之后的，所以首先要通过`protobuf`的`ArrayInputStream`和`CodedInputStream`进行反序列化，获得经过变长编码后固定长度（这里是32位）的请求头和剩下的请求体。对于请求头，需要将其从编码中解析出来。
+
+- **根据请求消息查找服务对象和方法**
+
+  根据请求头中的服务对象名称和方法名称，在`m_methodMap`中查找对应的服务对象和方法描述符。
+
+- **创建`Message`请求消息对象，解析参数**
+
+  根据方法描述符，创建`google::protobuf::Message`类型请求消息对象`request`，该对象的作用为解析并保存方法`method`调用所需要的参数。因此，它的类型是根据`method`所得到的。
+
+  `google::protobuf::Message` 为所有 protobuf 消息提供了一个通用接口，使得可以使用基类指针或引用来操作不同类型的 protobuf 消息。`service->GetRequestPrototype(method)` 返回一个指向 `google::protobuf::Message` 类型的指针，这个指针指向一个与 `method` 对应的请求消息类型的原型对象。调用 `New()` 方法创建一个新的请求消息对象。这个对象的实际类型与 `method` 对应的请求消息类型匹配。
+
+- **创建`Message`响应消息对象**
+
+  获得一个与 `method` 对应的响应消息类型的原型对象，但是使用基类`google::protobuf::Message`指针`response`指向，用于调用服务方法后存储方法的返回值。
+
+- **创建回调函数，用于在服务方法执行完毕后发送响应**
+
+  创建一个回调函数指针`done`，其在当前`RpcProvider`实例上执行，绑定`RpcProvider::SendRpcResponse`函数， `conn`和`response`均为函数的输入参数。当服务方法执行完毕后，已经获得了响应消息`response`，此时应该调用回调函数将响应消息发送给客户端。
+
+- **调用服务方法，开始执行**
+
+  前期工作已经完成，此时调用客户端所请求的服务方法，并输入对应参数，以获得响应消息。
+
+> **向客户端发送响应**
+
+`RpcProvider::SendRpcResponse`函数实现了从服务端向客户端发送响应消息，该函数在框架中一般绑定到一个回调函数中，使得可以在服务方法处理完成后调用，将响应消息传回客户端。
+
+```cpp
+/*
+SendRpcResponse 方法
+目的：RPC服务方法调用完成后，序列化RPC响应，发送给客户端
+步骤：
+    1. 将响应对象序列化为字符串
+    2. 通过连接发送响应数据
+*/
+void RpcProvider::SendRpcResponse(const muduo::net::TcpConnectionPtr &conn, google::protobuf::Message *response) {
+    std::string response_str;
+    if (response->SerializeToString(&response_str)){ // 序列化
+        // 成功，则发送响应
+        conn->send(response_str);
+    }
+    else {  // 失败
+        std::cout << "serialize response_str error!" << std::endl;
+    }
+      
+}
+```
+
+其中主要用到了`muduo::net::TcpConnectionPtr`对象，在 Muduo 网络库中，`TcpConnection` 类是一个重要的组件，表示一个**已建立的TCP连接和控制该TCP连接的方法**（连接建立和关闭和销毁），以及这个TCP连接的服务端和客户端的**套接字地址信息**等。它封装了 **socket 文件描述符**，并提供了**处理连接的各种事件和操作的功能**（包括发送）。因此，可以利用该对象所封装的`send`函数实现消息的回传。
+
+### MprpcChannel：客户端
+
+
+
+
+
+
+
+## 参考文献
+
+[Protobuf动态解析那些事儿 - TheBug - 博客园 (cnblogs.com)](https://www.cnblogs.com/jacksu-tencent/p/3447310.html)

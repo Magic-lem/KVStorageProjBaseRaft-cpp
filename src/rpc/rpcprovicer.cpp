@@ -190,8 +190,15 @@ void RpcProvider::onMessage(const muduo::net::TcpConnectionPtr &conn,
     // 创建响应对象
     google::protobuf::Message *response = service->GetResponsePrototype(method).New();
     
-    // 创建回调函数，用于在服务方法执行完毕后发送响应
-    google::protobuf::Closure *done = google::protobuf::NewCallback<RpcProvider, const::muduo::net::TcpConnectionPtr &, google::protobuf::Message *>(this, &RpcProvider::SendRpcResponse, conn, response);
+    // 创建回调函数，用于在服务方法执行完毕后向客户端发送响应
+    /*
+    参数解析：
+      this是指当前的 RpcProvider 实例。在回调时，SendRpcResponse 方法会在这个实例上调用。
+      &RpcProvider::SendRpcResponse: 指向 RpcProvider 类的成员函数 SendRpcResponse 的指针。在这里是指这个回调函数绑定的函数
+      coon：对应const::muduo::net::TcpConnectionPtr &   是SendRpcResponse的输入参数
+      response：对应google::protobuf::Message *         是SendRpcResponse的输入参数
+    */
+    google::protobuf::Closure *done = google::protobuf::NewCallback<RpcProvider, const::muduo::net::TcpConnectionPtr &, google::protobuf::Message *>(this, &RpcProvider::SendRpcResponse, conn, response);  
 
     // 调用服务方法
     service->CallMethod(method, nullptr, request, response, done);

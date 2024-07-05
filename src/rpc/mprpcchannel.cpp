@@ -115,7 +115,7 @@ void MprpcChannel::CallMethod(const google::protobuf::MethodDescriptor *method, 
         coded_output.WriteString(rpc_header_str);
     }
     // 将序列化的请求消息加在请求头编码的数据流后面，形成最终的发送数据流。
-    send_rpc_str += args_str;   
+    send_rpc_str += args_str;     // 虽然是直接加在后面了，本质上是一个字符串数据流。头部只是多了个变长编码
 
 
     // 发送数据

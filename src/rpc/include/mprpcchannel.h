@@ -7,7 +7,7 @@
 #define MPRPCCHANNEL_H
 
 #include <google/protobuf/service.h>
-#include <string>>
+#include <string>
 
 /*
 googe::protobuf框架中提供的RpcChannel，抽象了底层的网络通信细节，客户端可以通过RpcChannel
