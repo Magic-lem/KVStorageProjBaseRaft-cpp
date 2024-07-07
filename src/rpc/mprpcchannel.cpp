@@ -74,7 +74,7 @@ void MprpcChannel::CallMethod(const google::protobuf::MethodDescriptor *method, 
     }
 
     // 获取方法描述符
-    const google::protobuf::ServiceDescriptor *sd = method->se rvice();   // 服务描述信息
+    const google::protobuf::ServiceDescriptor *sd = method->service();   // 服务描述信息
     std::string service_name = sd->name();   // 服务名称
     std::string method_name = method->name();   // 方法名称
 

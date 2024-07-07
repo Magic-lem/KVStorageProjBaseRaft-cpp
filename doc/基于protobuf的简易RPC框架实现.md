@@ -341,7 +341,7 @@ void RpcProvider::onMessage(const muduo::net::TcpConnectionPtr &conn,
 
   根据方法描述符，创建`google::protobuf::Message`类型请求消息对象`request`，该对象的作用为解析并保存方法`method`调用所需要的参数。因此，它的类型是根据`method`所得到的。
 
-  `google::protobuf::Message` 为所有 protobuf 消息提供了一个通用接口，使得可以使用基类指针或引用来操作不同类型的 protobuf 消息。`service->GetRequestPrototype(method)` 返回一个指向 `google::protobuf::Message` 类型的指针，这个指针指向一个与 `method` 对应的请求消息类型的原型对象。调用 `New()` 方法创建一个新的请求消息对象。这个对象的实际类型与 `method` 对应的请求消息类型匹配。
+  `google::protobuf::Message` 为所有 protobuf 消息提供了一个通用接口，使得可以使用基类指针或引用来操作不同类型的 protobuf 消息。`service->GetRequestPrototype(method)` 返回一个指向 `google::protobuf::Message` 类型的指针，这个指针指向一个与 `method` 对应的请求消息类型的原型对象。调用 `New()` 方法创建一个新的请求消息对象。这个对象的实际类型与 `method` 对应的请求消息类型匹配（这个类型是程序员在`.proto`文件中定义的）。
 
 - **创建`Message`响应消息对象**
 
@@ -353,7 +353,7 @@ void RpcProvider::onMessage(const muduo::net::TcpConnectionPtr &conn,
 
 - **调用服务方法，开始执行**
 
-  前期工作已经完成，此时调用客户端所请求的服务方法，并输入对应参数，以获得响应消息。
+  前期工作已经完成，调用所查找到的服务对象的`CallerMethod`方法，并输入查询到的方法描述符及对应参数，以获得响应消息。
 
 > **向客户端发送响应**
 
@@ -384,12 +384,506 @@ void RpcProvider::SendRpcResponse(const muduo::net::TcpConnectionPtr &conn, goog
 
 ### MprpcChannel：客户端
 
+`MprpcChannel` 继承自`google::protobuf::RpcChannel` ，该类是Protobuf中的负责**管理客户端与服务器之间的网络通信**的模块，抽象了底层的网络细节，包括连接建立、数据传输、错误处理等。通过 `RpcChannel`，客户端可以与服务器建立连接并保持通信状态。
+
+实际上，`RpcChannel` 类并**没有直接提供连接函数或发送消息的具体方法。它更多地是一个抽象类，定义了 RPC 通信通道的接口**，用于管理和控制客户端与服务器之间的通信过程。因此，在实际使用中，需要程序员在具体的派生类中去实现这些功能。例如，在 gRPC 中，有一个 `grpc::Channel` 类继承自 `RpcChannel`，并提供了连接服务器和发送 RPC 请求的具体方法。
+
+因此，在本项目中，**`MprpcChannel` 就是一个具体实现的`RpcChannel`，实现了<font color='cornflowerblue'>建立连接</font>和<font color='cornflowerblue'>数据传输</font>的功能。**
+
+**职责：**是一个具体实现的 `google::protobuf::RpcChannel` 类，用于抽象底层的网络通信细节，使**客户端可以通过 `MprpcChannel` 来发送请求和接收响应**，而不需要关心具体的网络通信实现。
+
+```cpp
++-------------------------+
+|      MprpcChannel       |
+|-------------------------|
+| - m_clientFd: int       |  // 保存客户端文件描述符，用于网络通信
+| - m_ip: std::string     |  // 保存IP地址
+| - m_port: uint16_t      |  // 保存端口号
+|-------------------------|
+| + MprpcChannel          |  // 构造函数
+| + CallMethod            |  // 实现RPC方法调用的序列化和网络发送
+| - newConnect            |  // 尝试连接到指定IP和端口
++-------------------------+
+```
+
+主要功能包括：
+
+- **建立连接**：建立客户端与目标RPC服务节点之间的连接
+- **发送请求**：将客户端的RPC方法调用转换成网络请求，并发送到服务器。
+- **接收响应**：从服务端接收响应并传递给客户端。
+
+```cpp
+/*
+googe::protobuf框架中提供的RpcChannel，抽象了底层的网络通信细节，客户端可以通过RpcChannel
+来发送请求和接受响应，而不需要关心具体的网络通信实现
+主要作用：
+    1. 发送请求：将客户端的RPC方法调用转换成网络请求，并发送到服务器
+    2. 接收响应：从服务端接收响应并传递给客户端
+*/
+class MprpcChannel: public google::protobuf::RpcChannel {
+public:
+    MprpcChannel(std::string ip, short port, bool connectNow);  // 构造函数
+
+    // 重写CallMethod纯虚函数。该函数是用于RPC方法调用的数据序列化和网络发送，所有代理对象调用的RPC方法都会调用此函数
+    void CallMethod(const google::protobuf::MethodDescriptor *method, google::protobuf::RpcController *controller,
+                    const google::protobuf::Message *request, google::protobuf::Message *response, 
+                    google::protobuf::Closure *done) override;
+
+private:
+    int m_clientFd; // 保存客户端文件描述符，用于网络通信
+    const std::string m_ip;  // 保存IP地址
+    const uint16_t m_port;   // 端口号
+
+    // 尝试连接到指定IP和端口，并设置m_clientFd。成功返回true，否则返回false
+    bool newConnect(const char *ip, uint16_t port, std::string *errMsg);
+};
+```
+
+在`MprpcChannel` 中，核心功能均是在其成员函数`CallMethod`中实现的。`CallMethod` 是 `RpcChannel` 类中的纯虚函数，因此在这里必须重写。当客户端调用一个远程方法时，客户端代码通过代理对象`Stub`调用 RPC 方法，而代理对象内部会调用 `CallMethod`。因此，依托于`google::protobuf::RpcChannel`所提供的代理机制（具体请参考[C++下Protobuf学习-CSDN博客](https://blog.csdn.net/shenfenxihuan/article/details/140231611?spm=1001.2014.3001.5502)），可以使得当客户端使用存根`Stub`想要调用远程方法时，通过`CallMethod`来发送请求并获得响应。
+
+> **发送请求和接收响应**
+
+通过`MprpcChannel` ，客户端可以和服务端进行通信，以传输RPC请求并接收响应。这个过程主要在`RpcChannel` 所提供的虚函数接口`CallMethod`实现。`MprpcChannel` 中所实现的`CallMethod`方法如下：
+
+```cpp
+/*
+CallMethod 重写方法
+目的：负责进行RPC方法调用的数据序列化和网络发送，接收响应并进行反序列化
+输入参数：
+    method：关于要调用的方法的描述符
+    controller: 用于管理RPC调用的控制器
+    request: 要发送的请求消息
+    response：用于存储接收的响应消息
+    done：RPC方法调用的回调函数
+步骤：
+    1. 连接检查和重新连接
+    2. 获取服务和方法名称
+    3. 参数序列化
+    4. 构建RPC头
+    5. 构建发送的数据流
+    6. 通过TCP连接和系统调用钩子函数，发送RPC请求
+    7. 接收RPC响应
+    8. 反序列化响应数据
+*/
+void MprpcChannel::CallMethod(const google::protobuf::MethodDescriptor *method, google::protobuf::RpcController* controller,
+                              const google::protobuf::Message *request, google::protobuf::Message *response,
+                              google::protobuf::Closure *done) {
+    // 检查连接状态，如何连接断开，则重新连接
+    if (m_clientFd == -1) {  // 文件描述符为-1，说明文件描述符无效或为打开，即未连接或连接已经断开
+        std::string errMsg;
+        bool rt = newConnect(m_ip.c_str(), m_port, &errMsg);  // 尝试重连
+        if (!rt){ // 连接失败
+            DPrintf("[func-MprpcChannel::CallMethod]重连接ip: {%s} port {%d}失败", m_ip.c_str(), m_port);
+            controller->SetFailed(errMsg);
+        } else {
+            DPrintf("[func-MprpcChannel::CallMethod]连接ip: {%s} port {%d}成功", m_ip.c_str(), m_port);
+        }
+    }
+
+    // 获取方法描述符
+    const google::protobuf::ServiceDescriptor *sd = method->service();   // 服务描述信息
+    std::string service_name = sd->name();   // 服务名称
+    std::string method_name = method->name();   // 方法名称
+
+    // 将请求消息进行序列化
+    uint32_t args_size{};    // 初始化一个32位无符号整形，用于后面存储序列结果长度
+    std::string args_str;    // 字符串，用于保存请求序列化结果
+    if (request->SerializeToString(&args_str)) {   // 注意SerializeToString和SerializeAsString的区别
+        args_size = args_str.length();
+    } else {
+        controller->SetFailed("serialize request error!");
+        return;
+    }
+
+    // 构建RPC请求头
+    RPC::RpcHeader rpcHeader;   // RPC头对象，自定义的Protobuf消息类型，利用.proto文件生成
+    rpcHeader.set_service_name(service_name);
+    rpcHeader.set_method_name(method_name);
+    rpcHeader.set_args_size(args_size);
+
+    // 将请求头序列化
+    std::string rpc_header_str;
+    if (!rpcHeader->SerializeToString(&rpc_header_str)) {
+        controller->SetFailed("serialize rpc header error!");
+        return;
+    }
+
+    // 构建发送数据流
+    // 对请求头进行编码是由于请求头包含多元数据，可以通过编码实现更加结构化、紧凑的形式来表示和传输
+    std::string send_rpc_str;
+    {   // 通过一个大括号，来创建临时作用域，以控制局部对象的生命周期。在作用于结束后将对象销毁，资源释放。
+        google::protobuf::io::StringOutputStream string_output(&send_rpc_str);  // 构建字符串发送数据流
+        google::protobuf::io::CodedOutputStream coded_output(&string_output);   // 构建编码发送数据流
+        // 数据流的构建过程：先使用CodedOutputStream'将元数据 (header的长度和内容)编码，然后使用StringOutputStream将编码内容写入字符串数据流中
+        
+        // 首先写入请求头的长度，使用变长编码的方式写入
+        coded_output.WriteVarint32(static_cast<uint32_t>(rpc_header_str.size()));   
+        // 写入请求头内容
+        coded_output.WriteString(rpc_header_str);
+    }
+    // 将序列化的请求消息加在请求头编码的数据流后面，形成最终的发送数据流。
+    send_rpc_str += args_str;     // 虽然是直接加在后面了，本质上是一个字符串数据流。头部只是多了个变长编码
+
+
+    // 发送数据
+    while (-1 == send(m_clientFd, send_rpc_str.c_str(), send_rpc_str.size(), 0)) {  // 调用hook函数send向RPC服务端发送数据，返回值为-1代表发送失败，触发重试逻辑
+      // 错误处理
+      char errtxt[512] = {0};
+      sprintf(errtxt, "send error! errno:%d", errno);   // 使用sprintf函数将错误信息和errno值格式化到errtxt字符串中
+
+      // 重新连接
+      std::cout << "尝试重新连接, 对方ip: " << m_ip << " 对方端口: " << m_port << std::endl;
+      close(m_clientFd);    // hook函数，关闭文件描述符
+      m_clientFd = -1;
+      std::string errMsg;
+      bool rt = newConnect(m_ip.c_str(), m_port, &errMsg);  // 连接到指定ip:端口
+      if (!rt) {
+        controller->SetFailed(errMsg);
+        return;
+      }
+    }
+
+    // 接收rpc请求的响应
+    /*
+      当前的rpc为同步阻塞模式，即recv函数在没有接收到数据前会阻塞等待，直到从套接字接收到数据、发生错误或者连接关闭。
+    */
+    char recv_buf[1024] = {0};    // 接收缓冲区
+    int recv_size = 0;  // 接受缓冲区大小
+    if (-1 == (recv_size = recv(m_clientFd, recv_buf, 1024, 0))) {  // hook函数，从套接字m_clientFd接收数据到recv_buf，返回值-1代表接收失败
+      close(m_clientFd);
+      m_clientFd = -1;
+      char errtxt[512] = {0};
+      sprintf(errtxt, "ercv error! errno:%d", errno);
+      controller->SetFailed(errtxt);
+      return;
+    }
+
+    // 解析响应数据：反序列化，存到response中
+    if (!response->ParseFromArray(recv_buf, recv_size)) {   // 若返回false，则表示解析失败
+      char errtxt[1050] = {0};
+      sprintf(errtxt, "parse error! response_str:%s", recv_buf);
+      controller->SetFailed(errtxt);
+      return;
+    }
+
+    // 解析成功，完成
+}
+```
+
+> **建立连接**
+
+`MprpcChannel` 提供了与指定的RPC服务器节点建立连接的功能接口`MprpcChannel::newConnect`：
+
+```cpp
+/*
+newConnect 函数
+目的：尝试连接到远程RPC服务节点指定端口，并设置m_clientFd。成功返回true，否则返回false
+输入参数：
+    ip：远程RPC服务节点的IP地址
+    port：端口号
+    errMsg：用于存储错误信息的字符串指针
+为什么ip使用chat*类型：
+    许多网络编程接口和系统调用中，使用C风格的字符串（char* 或 const char*）作为参数是历史遗留问题。这些接口设计得比较早，在C语言中没有std::string这种类型，因此沿用了C风格的字符串。
+*/
+bool MprpcChannel::newConnect(const char* ip, uint16_t port, string* errMsg) {
+  /*
+  socket(AF_INET, SOCK_STREAM, 0)：创建一个TCP套接字。
+      AF_INET：地址族，表示使用IPv4。
+      SOCK_STREAM：套接字类型，表示使用TCP协议。
+      0：协议，通常为0，表示自动选择合适的协议。
+  */
+  int clientfd = socket(AF_INET, SOCK_STREAM, 0);   // 返回套接字的文件描述符、
+  int (-1 == clientfd) {
+    char errtxt[512] = {0};
+    sprintf(errtxt, "Create socket error! errno:%d", errno);
+    m_clientFd = -1;
+    *errMsg = errtxt;
+    return false;
+  }
+
+  // 设置远程RPC服务节点地址
+  struct sockaddr_in server_addr;
+  server_addr.sin_family = AF_INET;
+  server_addr.sin_port = htons(port);
+  server_addr.sin_addr.s_addr = inet_addr(ip);
+
+  // 连接远程RPC服务节点
+  if (-1 == connect(clientfd, (strcut sockaddr*)&server_addr, sizeof(server_addr))) {  // hook函数
+    // 连接失败
+    close(clientfd);
+    cahr errtxt[512] = {0};
+    sprintf(errtxt, "connect fail! errno:%d", errno);
+    m_clientFd = -1;
+    *errMsg = errtxt;
+    return false;
+  }
+
+  // 连接成功
+  m_clientFd = clientfd;
+  return true;
+}
+```
+
+### MprpcController：控制器
+
+`MprpcController` 继承自`google::protobuf::RpcController` ，该类是Protobuf中的负责**管理远程过程调用（RPC）的控制流和状态**的模块，能够在执行 RPC 时**管理错误、取消请求以及处理回调通知**。与`google::protobuf::RpcChannel` 类似，`RpcController`并没有具体实现错误管理等函数，而是将其定义为了纯虚函数，由派生类进行具体实现。
+
+因此，在本项目中，**`MprpcController` 就是一个具体实现的`RpcController`，实现了重置状态、检查失败状态、设置失败原因、启动取消、检查是否取消以及处理取消时的回调等功能。**
+
+**职责：**是一个具体实现的 `google::protobuf::RpcController` 类，用于RPC执行过程中管理错误、取消请求以及处理回调通知。
+
+```cpp
++---------------------------+
+|      MprpcController      |
+|---------------------------|
+| - m_failed: bool           |  // 表示RPC方法执行过程中的状态，是否失败
+| - m_errText: std::string   |  // 记录RPC方法执行过程中的错误信息
+| - m_canceled: bool         |  // 标识是否取消RPC请求
+| - m_cancelCallback: google::protobuf::Closure*  |  // 取消RPC请求时的回调函数
+|---------------------------|
+| + MprpcController()       |  // 构造函数
+| + Reset()                 |  // 重置控制器的状态和错误信息
+| + Failed() const          |  // 检查RPC调用是否失败
+| + ErrorText() const       |  // 获得错误信息
+| + SetFailed(reason: const std::string&) |  // 设为调用失败，记录错误信息
+| + StartCancel()           |  // 启动取消RPC调用
+| + IsCanceled() const      |  // 检查当前的RPC调用是否已经取消
+| + NotifyOnCancel(callback: google::protobuf::Closure*) |  // RPC调用被取消时，会调用这个回调函数
++---------------------------+
+```
+
+主要功能包括：
+
+- **错误处理**：管理和检查 RPC 调用执行过程中的状态和错误信息。
+- **取消请求**：管理 RPC 调用的取消请求。
+- **状态重置**：允许应用程序在每次新的 RPC 调用之前重置控制器的状态，以便重新使用。
+
+```cpp
+/*
+继承自'google::protobuf::RpcController'，提供了一些方法来处理RPC调用中的错误和状态，并且可以在需要时取消调用。
+主要作用：
+    1. 控制RPC调用的执行过程
+    2. 错误处理
+    3. 调用取消 
+*/
+class MprpcController: public google::protobuf::RpcController {
+public:
+    MprpcController();    // 构造函数
+
+    void Reset() override;   // 重置控制器的状态和错误信息
+    bool Failed() const override;   // 检查RPC调用是否失败
+    std::string ErrorText() const override;  // 获得错误信息
+    void SetFailed(const std::string& reason) override;   // 设为调用失败，记录错误信息
+
+    // 取消调用系列功能
+    void StartCancel() override;   // 启动取消调用
+    bool IsCanceled() const override;   // 检查当前的RPC调用是否已经取消
+    void NotifyOnCancel(google::protobuf::Closure* callback) override;  // RPC调用被取消时，会调用这个回调函数
+
+private:
+    bool m_failed;   // 表示RPC方法执行过程中的状态，是否失败
+    std::string m_errText;  // 记录RPC方法执行过程中的错误信息
+    bool m_canceled;  // 标识是否取消
+    google::protobuf::Closure* m_cancelCallback;   // 取消时的回调函数
+};
+```
+
+> **错误处理**
+
+在本项目中，错误的处理是简单的记录一下错误信息，记录在`m_errText`成员变量中。
+
+```cpp
+// 检查RPC调用是否失败
+bool MprpcController::Failed() const {
+    return m_failed;
+}
+
+// 获得错误信息
+std::string MprpcController::ErrorText() const {
+    return m_errText;
+}
+
+// 出现了错误，将控制器设为调用失败的状态
+void MprpcController::SetFailed(const std::string& reason) {
+    m_failed = true;
+    m_errText = reason;
+}
+```
+
+> **取消请求**
+
+取消请求时的执行逻辑很简单，主要内容在于取消时所调用的回调函数。在此我们先不考虑回调函数的具体内容，仅学习`MprpcController` 类中的取消操作。`MprpcController` 类中存在一个bool型变量`m_canceled`，标识当前请求是否被取消。同时还存在一个`google::protobuf::Closure*`类型的回调函数 `m_cancelCallback`，当想要取消RPC请求时，则会调用该回调函数。
+
+```cpp
+// 绑定回调函数
+void MprpcController::NotifyOnCancel(google::protobuf::Closure* callback){
+    m_cancelCallback = callback;
+
+    if (m_canceled && m_cancelCallback) m_cancelCallback->Run();
+}
+
+// 检查当前的RPC调用是否取消
+bool MprpcController::IsCanceled() const {
+    return m_canceled;
+}
+
+// 启动取消调用
+void MprpcController::StartCancel() {
+    m_canceled = true;
+    // 如果存在回调函数，则执行
+    if (m_cancelCallback) m_cancelCallback->Run();
+}
+```
+
+> **状态重置**
+
+状态重置是重置控制器`MprpcController`实例 的状态，以便开启新的RPC调用时重新使用，而不是创建一个新的`MprpcController` 实例。
+
+```cpp
+// 重置控制器的状态和错误信息
+void MprpcController::Reset() {
+    m_failed = false;
+    m_errText = "";
+    m_canceled = false;
+    m_cancelCallback = nullptr;
+}
+```
+
+### MprpcConfig：配置信息
+
+`MprpcConfig` 类，用于读取和解析配置文件。允许用户轻松地加载和查询配置文件中的各种配置项，例如 **IP 地址、端口号等**，适用于在网络通信和分布式系统中配置和管理各种连接参数和设置。
+
+**配置文件示例:**
+
+```json
+# 这是注释行
+rpcserverip = 127.0.0.1
+rpcserverport = 8080
+zookeeperip = 192.168.1.100
+zookeeperport = 2181
+```
+
+在RPC（Remote Procedure Call，远程过程调用）中，这些配置信息通常代表着用于建立和管理RPC连接的关键参数和设置。具体来说，示例配置文件中的每个配置项可能表示以下内容：
+
+- **rpcserverip:** RPC 服务器的 IP 地址。这是客户端在进行远程调用时需要连接的目标服务器的地址。
+- **rpcserverport:** RPC 服务器的端口号。指定了 RPC 服务在服务器上监听客户端连接的端口。
+- **zookeeperip:** 可选项，Zookeeper 服务器的 IP 地址。在某些分布式系统中，Zookeeper 用于管理和发现可用的服务节点。
+- **zookeeperport:** 可选项，Zookeeper 服务器的端口号。用于连接到 Zookeeper 服务器以获取服务节点的信息。
+
+```cpp
++----------------------+
+|      MprpcConfig     |
+|----------------------|
+| - m_configMap        |  // 存储配置文件中的键值对信息
++----------------------+
+| + LoadConfigFile     |  // 负责解析加载配置文件
+| + Load               |  // 查询指定键名 key 对应的配置项值
+| - Trim               |  // 去除字符串 src_buf 前后的空格
++----------------------+
+```
+
+主要功能包括：
+
+- **加载配置文件**：加载指定的配置文件，将配置项（键值对）加入到所维护的哈希表`m_configMap`中。
+- **查询配置信息**：根据输入的指定键值`key`，获取对应的配置信息`value`。
+- **格式化数据**：去除字符串 `src_buf` 前后的空格、制表符和换行符，确保读取到的配置项名称和值不带有额外的空白字符。
+
+```cpp
+// 框架读取配置文件类
+class MprpcConfig {
+public:
+  void LoadConfigFile(const char *config_file);   // 负责解析加载配置文件
+  std::string Load(const std::string &key);   // 查询指定键名 key 对应的配置项值
+
+private:
+  std::unordered_map<std::string, std::string> m_configMap;   // 存储配置文件中的键值对信息
+  void Trim(std::string &src_buf);    // 去除字符串 src_buf 前后的空格
+};
+```
+
+每个方法的具体实现如下：
+
+```cpp
+// 负责解析加载配置文件
+void MprpcConfig::LoadConfigFile(const char *config_file) {
+  FILE *pf = fopen(config_file, "r");
+  if (nullptr == pf) {
+    std::cout << config_file << " is note exist!" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  // 1.注释   2.正确的配置项 =    3.去掉开头的多余的空格
+  while (!feof(pf)) {
+    char buf[512] = {0};
+    fgets(buf, 512, pf);
+
+    // 去掉字符串前面多余的空格
+    std::string read_buf(buf);
+    Trim(read_buf);
+
+    // 判断#的注释
+    if (read_buf[0] == '#' || read_buf.empty()) {
+      continue;
+    }
+
+    // 解析配置项
+    int idx = read_buf.find('=');
+    if (idx == -1) {
+      // 配置项不合法
+      continue;
+    }
+
+    std::string key;
+    std::string value;
+    key = read_buf.substr(0, idx);
+    Trim(key);
+    // rpcserverip=127.0.0.1\n
+    int endidx = read_buf.find('\n', idx);
+    value = read_buf.substr(idx + 1, endidx - idx - 1);
+    Trim(value);
+    m_configMap.insert({key, value});
+  }
+
+  fclose(pf);
+}
+
+// 查询配置项信息
+std::string MprpcConfig::Load(const std::string &key) {
+  auto it = m_configMap.find(key);
+  if (it == m_configMap.end()) {
+    return "";
+  }
+  return it->second;
+}
+
+// 去掉字符串前后的空格
+void MprpcConfig::Trim(std::string &src_buf) {
+  int idx = src_buf.find_first_not_of(' ');
+  if (idx != -1) {
+    // 说明字符串前面有空格
+    src_buf = src_buf.substr(idx, src_buf.size() - idx);
+  }
+  // 去掉字符串后面多余的空格
+  idx = src_buf.find_last_not_of(' ');
+  if (idx != -1) {
+    // 说明字符串后面有空格
+    src_buf = src_buf.substr(0, idx + 1);
+  }
+}
+```
+
+`MprpcConfig` 的主要作用是将配置信息从代码中分离出来，存储在外部文件中，便于修改和管理。在分布式系统中，可能需要配置多个 RPC 节点、服务发现机制等。通过配置文件，可以方便地管理这些分布式组件的连接信息。
 
 
 
+## 特别声明
+
+代码参考来源：[youngyangyang04/KVstorageBaseRaft-cpp: 【代码随想录知识星球】项目分享-基于Raft的k-v存储数据库🔥 (github.com)](https://github.com/youngyangyang04/KVstorageBaseRaft-cpp)
 
 
 
-## 参考文献
+# 参考文献
 
 [Protobuf动态解析那些事儿 - TheBug - 博客园 (cnblogs.com)](https://www.cnblogs.com/jacksu-tencent/p/3447310.html)
+
+[C++下Protobuf学习-CSDN博客](https://blog.csdn.net/shenfenxihuan/article/details/140231611?spm=1001.2014.3001.5502)

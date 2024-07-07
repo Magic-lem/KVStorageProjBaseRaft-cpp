@@ -1,0 +1,102 @@
+// 
+// 定义在raft算法中需要用到的RPC消息类型和服务，用于protobuf编译为Cpp代码
+// created by magic_pri on 2024-7-7
+//
+
+syntax = "proto3";
+
+package raftRpcProctoc; // 所在的命名空间，防止命名冲突
+
+option cc_generic_services = true;   //  开启RPC的stub服务，
+
+// --------定义raft算法中用到的各种消息类型--------
+
+/*
+LogEntry：Raft日志条目
+主要功能：存储客户端发送的命令及其相关的元数据。
+*/
+message LogEntry {
+  // 1,2,3等是字段标识符，每个消息内部的每个字段都有一个唯一的编号，表示是第几个字段
+  bytes Command   = 1;      // 命令数据
+  int32 LogTerm   = 2;      // 当前的term
+  int32 LogIndex  = 3;     // 该日志条目的索引
+}
+
+/*
+AppendEntriesArgs：leader向追随者发送的日志条目或心跳信号
+主要功能：用于领导者节点向追随者节点复制日志条目，也可作为心跳信号来维持领导者地位
+*/
+message AppendEntriesArgs {
+  int32 Term                = 1;     // 当前leader的任期号
+  int32 LeaderId            = 2;     // 当前leader的ID
+  int32 PrevLogIndex        = 3;     //  新日志条目之前的最后一个日志条目的索引
+  int32 PrevLogTerm         = 4;     // 新日志条目之前的最后一个日志条目的任期号
+  repeated LogEntry Entries = 5;     // 要存储的日志条目，如果为空则是心跳信号
+  int32 LeaderCommit        = 6;     // leader已提交了的日志索引
+}
+
+/*
+AppendEntriesReply：追随者节点向leader节点回复消息
+主要功能：用于追随者节点向领导者节点回复AppendEntriesArgs请求，通知领导者日志条目是否成功附加，以及当前追随者的状态和任期号
+*/
+message AppendEntriesReply {
+  int32 Term                  = 1;     // 当前追随者的任期号
+  bool Success                = 2;     // leader传过来的日志条目是否成功附加
+  int32 UpdateNextIndex       = 3;     // 附加日志失败时，快速调整领导者的nextIndex。这个字段指示追随者节点期望的日志条目索引。
+  int32 AppState              = 4;     // 标识节点或网络状态
+}
+
+/*
+RequestVoteArgs：候选者节点向集群中的其他节点请求选票的消息
+主要功能：在一个节点转换为候选者状态后，它会通过发送RequestVoteArgs消息来发起选举过程
+*/
+message RequestVoteArgs  {
+	int32 Term         =1;      // 候选者的当前任期号
+	int32 CandidateId  =2;      // 请求投票的候选者的ID。用于唯一标识候选者节点。
+	int32 LastLogIndex =3;      // 候选者最后一个日志条目的索引。用于让接收节点判断候选者的日志是否足够新。
+	int32 LastLogTerm  =4;      // 候选者最后一个日志条目的任期。与LastLogIndex一起用于判断日志的新旧程度。
+}
+
+/*
+RequestVoteReply：节点向投票请求发起者回复投票结果消息
+主要功能：帮助候选者节点了解其他节点是否投票给自己，从而影响其是否能够成为新的领导者。
+*/
+message RequestVoteReply  {
+	// Your data here (2A).
+	int32 Term        =1;   // 当前节点的任期号。用于让接收节点了解当前节点的任期。
+	bool VoteGranted  =2;   // 表示是否投票给了候选者。投票给候选者时为true，否则为false。
+	int32 VoteState   =3;   // 表示投票状态。可以是已投票、未投票或其他状态的标识。
+}
+
+/*
+InstallSnapshotRequest：leader向追随者节点发送的快照数据
+主要功能：追随者节点可以快速恢复到领导者当前的状态。在Raft协议中，当日志条目过多时，为了避免大量的日志复制导致性能问题，领导者可以周期性地向追随者发送快照数据。
+*/
+message InstallSnapshotRequest  {
+	int32 LeaderId                 =1;    // 发送快照数据的领导者节点的ID
+	int32 Term                     =2;    // 发送快照数据时领导者的任期号
+	int32 LastSnapShotIncludeIndex =3;    // 最后一个包含在快照中的日志条目的索引
+	int32 LastSnapShotIncludeTerm  =4;    // 最后一个包含在快照中的日志条目的任期号
+	bytes Data                     =5;    // 快照数组字节流，当然是用bytes来传递，描述领导者当前的状态
+}
+
+/*
+InstallSnapshotResponse ：确认追随者节点已成功接收并应用来自领导者节点发送的快照数据
+主要功能：用于领导者节点确认追随者节点对快照安装的响应
+注意：只用返回Term，因为对于快照只要Term是符合的就是无条件接受的
+*/
+message InstallSnapshotResponse  {
+	int32 Term  = 1;
+}
+
+
+// --------定义raft算法中用到的服务及其服务方法--------
+
+// 只有raft节点之间才会涉及rpc通信
+// 通过rpc实现各个raft节点之间的通信函数
+service raftRpc  
+{
+    rpc AppendEntries(AppendEntriesArgs) returns(AppendEntriesReply);       // AppendEntries：领导者节点用于向追随者节点发送日志条目，用于复制日志和心跳检测。
+    rpc InstallSnapshot (InstallSnapshotRequest) returns (InstallSnapshotResponse);   // InstallSnapshot：领导者节点向追随者节点发送快照数据，用于减少长时间运行的Raft节点中的存储压力。
+    rpc RequestVote (RequestVoteArgs) returns (RequestVoteReply);   // RequestVote：：候选者节点向其他节点请求投票，以便在选举中成为新的领导者。
+}

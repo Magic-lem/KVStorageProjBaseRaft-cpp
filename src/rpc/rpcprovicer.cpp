@@ -200,7 +200,7 @@ void RpcProvider::onMessage(const muduo::net::TcpConnectionPtr &conn,
     */
     google::protobuf::Closure *done = google::protobuf::NewCallback<RpcProvider, const::muduo::net::TcpConnectionPtr &, google::protobuf::Message *>(this, &RpcProvider::SendRpcResponse, conn, response);  
 
-    // 调用服务方法
+    // 调用服务对象的CallMthod方法，传入想要调用的方法名称等。 该方法内实现了完成后调用done回调函数
     service->CallMethod(method, nullptr, request, response, done);
 }
 
