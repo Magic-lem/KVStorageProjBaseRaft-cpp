@@ -5,6 +5,7 @@
 
 #include "./include/iomanager.hpp"
 
+
 namespace monsoon {
 
 /*
@@ -235,17 +236,17 @@ bool IOManager::cancelEvent(int fd, Event event) {
   FdContext *fd_ctx = fdContexts_[fd];
   lock.unlock();
 
-  RWMutex::Lock ctxLock(fid_ctx->mutex);  // 给事件上下文对象加互斥锁，会修改
+  Mutex::Lock ctxLock(fd_ctx->mutex);  // 给事件上下文对象加互斥锁，会修改
   if (!(fd_ctx->events & event)) {  // 不存在指定事件
     return false;
   }
 
   // 存在指定事件，则开始取消
-  Event new_events = (Event)(fid_ctx->events & ~event); // 从events中删除event
+  Event new_events = (Event)(fd_ctx->events & ~event); // 从events中删除event
   int op = new_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;   // 根据删除event之后是否还存在事件，决定是执行修改还是删除
   epoll_event epevent;
   epevent.events = EPOLLET | new_events;
-  epevent.data.prt = fd_ctx;
+  epevent.data.ptr = fd_ctx;
 
   // 注册删除后的事件作为fd文件描述符的监听事件
   int ret = epoll_ctl(epfd_, op, fd, &epevent);
@@ -271,9 +272,9 @@ bool IOManager::cancelAll(int fd) {
     return false;
   }
   FdContext *fd_ctx = fdContexts_[fd];
-  lock.unlock;
+  lock.unlock();
 
-  RWMutex::Lock ctxLock(fd_ctx->mutex);
+  Mutex::Lock ctxLock(fd_ctx->mutex);
   if (!fd_ctx->events) {
     return false;   // 如果不存在事件，直接返回
   }
@@ -310,7 +311,7 @@ bool IOManager::cancelAll(int fd) {
 static IOManager *IOManager::GetThis  静态成员函数
 主要作用：获取当前线程的IOManager的实例
 */
-IOManager *IOManager::GetThis() {
+IOManager * IOManager::GetThis() {
   return dynamic_cast<IOManager *> (Scheduler::GetThis());
 }
 
@@ -344,7 +345,7 @@ void IOManager::idle() {
     // 检查是否可以停止，并获取最近一个定时器超时时间
     uint64_t next_timeout = 0;
     if (stopping(next_timeout)) { 
-      std::cout << "name = " << GetName() << "idle stopping exit" << endl;  // 调度器停止，退出循环
+      std::cout << "name = " <<  GetName() << "idle stopping exit" << std::endl;  // 调度器停止，退出循环
       break;
     }
 
@@ -368,7 +369,7 @@ void IOManager::idle() {
           continue;
         }
         // 否则报错退出阻塞等待
-        std::cout << "epoll_wait [" << epfd_ << "] errno, err: " <errno << std::endl;
+        std::cout << "epoll_wait [" << epfd_ << "] errno, err: " << errno << std::endl;
         break;  // 退出等待循环
       } else {  // =0时，表示等待超时没有发生事件，此时退出等待； >0时表示成功返回，返回值为触发的事件数，同样退出等待
         break;
@@ -423,7 +424,7 @@ void IOManager::idle() {
       int op = left_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
       event.events = EPOLLET | left_events;
 
-      int ret2 = epoll_ctl(epfd_, op, fd, &event.events);  // 将剩下的事件重新加入到epoll_wait，确保边缘触发模式下事件不会丢失。
+      int ret2 = epoll_ctl(epfd_, op, fd_ctx->fd, &event);  // 将剩下的事件重新加入到epoll_wait，确保边缘触发模式下事件不会丢失。
       if (ret2) {
         std::cout << "epoll wait [" << epfd_ << "] errno, err: " << errno << std::endl;
         continue;
@@ -436,7 +437,7 @@ void IOManager::idle() {
         --pendingEventCnt_;
       }
       if (real_events & WRITE) {
-        fd_ctx=>triggerEvent(WRITE);
+        fd_ctx->triggerEvent(WRITE);
         --pendingEventCnt_;
       }
     }
@@ -462,10 +463,10 @@ bool IOManager::stopping() {
 bool IOManager::stopping(uint64_t &)
 主要作用：判断IOManager（作为调度器）是否可以停止，并获取最近一个定时器超时时间
 */
-bool IOManager:stopping(uint64_t &timeout) {
+bool IOManager::stopping(uint64_t &timeout) {
   timeout = getNextTimer();
   // 所有待调度的I/O事件执行结束后，才允许退出
-  return timeou ~0ull && pendingEventCnt_ == 0 && Scheduler::stopping();
+  return timeout == ~0ull && pendingEventCnt_ == 0 && Scheduler::stopping();
 }
 
 /*
@@ -473,11 +474,11 @@ void IOManager::contextResize
 主要作用：调整存储上下文信息封装对象的数组fdContexts_的大小，为新扩大的位置初始化一个上下文信息封装对象
 */
 void IOManager::contextResize(size_t size) {
-  fdContexts_.resize(size_t size);
+  fdContexts_.resize(size);
   for (size_t i = 0; i < fdContexts_.size(); ++i) {
     if (!fdContexts_[i]) {  // 若不存在对象，则初始化一个
       fdContexts_[i] = new FdContext;
-      fdContexts_->fd = i;  // 数组的索引是用的文件描述符，所以这里可以直接将描述符设为i
+      fdContexts_[i]->fd = i;  // 数组的索引是用的文件描述符，所以这里可以直接将描述符设为i
     }
   }
 }

@@ -15,6 +15,6 @@ class RaftRpcUtil
 {
 public:
 private:
-}
+};
 
 #endif

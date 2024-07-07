@@ -5,6 +5,7 @@
 #ifndef __SYLAR_IOMANAGER_H__
 #define __SYLAR_IOMANAGER_H__
 
+#include "thread.hpp"
 #include "scheduler.hpp"
 #include "timer.hpp"
 #include <sys/epoll.h>

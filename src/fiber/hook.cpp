@@ -5,6 +5,7 @@
 
 #include "./include/hook.hpp"
 #include <dlfcn.h>  // dlsym, RTLD_NEXT
+#include <cstdarg>
 #include <errno.h>
 #include <memory>
 
@@ -190,7 +191,7 @@ HOOK_FUN(XX);
 sleep函数
 主要功能：暂停当前线程的执行，直到指定的秒数过去或被信号打断
 */
-unsigned int sleep(unistd int seconds) {
+unsigned int sleep(unsigned int seconds) {
   // 如果设置了不使用钩子，则直接使用系统调用函数
   if (!t_hook_enable) {
     return sleep_f(seconds);
@@ -202,7 +203,7 @@ unsigned int sleep(unistd int seconds) {
   // 添加一个定时器，回调函数为scheduler（添加任务到调度器中）。当定时器到时时，会将本协程加入到任务列表中
   iom->addTimer(seconds * 1000,
                 std::bind((void (Scheduler::*)(Fiber::ptr, int thread)) & IOManager::scheduler, iom, fiber, -1));
-  Fiber::GetThis().yield();   // 让出执行权
+  Fiber::GetThis()->yield();   // 让出执行权
   return 0;  // 睡眠完毕
 }
 
@@ -221,7 +222,7 @@ int usleep(useconds_t usec) {
   IOManager *iom = IOManager::GetThis();
   iom->addTimer(usec / 1000,
                 std::bind((void (Scheduler::*)(Fiber::ptr, int thread)) & IOManager::scheduler, iom, fiber, -1));
-  Fiber::GetThis().yield();
+  Fiber::GetThis()->yield();
   return 0;
 };
 
@@ -229,7 +230,7 @@ int usleep(useconds_t usec) {
 nanosleep 函数
 主要功能：暂停当前线程执行指定的纳秒数
 */
-int nanosleep(const sturct timespec *req, struct timespec *rem) {
+int nanosleep(const struct timespec *req, struct timespec *rem) {
   if (!t_hook_enable) {
     // 不允许hook,则直接使用系统调用
     return nanosleep_f(req, rem);
@@ -282,7 +283,7 @@ int connect_with_timeout(int fd, const struct sockaddr *addr, socklen_t addrlen,
 
   // 使用hook，则设置非阻塞套接字并调用系统的 connect 函数进行连接
   FdCtx::ptr ctx = FdMgr::GetInstance()->get(fd); // 获取文件描述符的上下文信息，对于socket来说，该描述符被设为非阻塞模式
-  if (!ctx || ctx->isClose) {   // 描述符无效或文件已关闭
+  if (!ctx || ctx->isClose()) {   // 描述符无效或文件已关闭
     errno = EBADF;
     return -1;
   }
@@ -321,7 +322,8 @@ int connect_with_timeout(int fd, const struct sockaddr *addr, socklen_t addrlen,
                                     // 超时了，取消WRITE事件
                                     t->cancelled = ETIMEDOUT;
                                     iom->cancelEvent(fd, WRITE);
-                                   })
+                                   },
+                                   winfo);
   }
 
   
@@ -349,7 +351,7 @@ int connect_with_timeout(int fd, const struct sockaddr *addr, socklen_t addrlen,
   socklen_t len = sizeof(int);
 
   // 首先getsockopt函数获取套接字错误状态
-  if (-1 == getsockopt(fd, SOL_SOCKETM, SO_ERROR, &error, &len)) {
+  if (-1 == getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len)) {
     // 返回-1，说明获取套接字错误状态失败
     return -1;
   }
@@ -386,7 +388,7 @@ accept 接收函数，对Linux accept函数的钩子封装
     socklen_t addrlen：指向一个socklen_t变量的指针，该变量最初包含addr的长度，并且在返回时被设置为客户端地址的实际长度。
 */
 int accept(int s, struct sockaddr *addr, socklen_t *addrlen) {
-  int fd = do_io(s, accept_f, "accept", READ, SO_RCVtimeo, addr, addrlen);  // fd为新的套接字描述符
+  int fd = do_io(s, accept_f, "accept", READ, SO_RCVTIMEO, addr, addrlen);  // fd为新的套接字描述符
   if (fd > 0) {
     FdMgr::GetInstance()->get(fd, true);  // 创建获得fd的上下文信息
   }
@@ -575,7 +577,7 @@ int fcntl(int fd, int cmd, .../* arg */) {
       ctx->setUserNonblock(arg & O_NONBLOCK);   // 如果参数arg中包含O_NONBLOCK标志，则设置用户非阻塞标志
 
       // 调整标志值,确保了在调用 fcntl 时，arg 中的 O_NONBLOCK 状态与实际系统设置的非阻塞状态一致。
-      if (ctx->getSysNonblock()) {  // 如果系统设置了非阻塞，则在arg中添加O_NONBLOCK标志
+      if (ctx->getSysNoneblock()) {  // 如果系统设置了非阻塞，则在arg中添加O_NONBLOCK标志
         arg |= O_NONBLOCK;
       } else {    // 否则删除O_NONBLOCK标志
         arg &= ~O_NONBLOCK;
@@ -689,7 +691,7 @@ getsockopt 函数
     optval：指向返回选项值的缓冲区。
     optlen：指向包含缓冲区大小的变量。
 */
-int getsockopt(int sockfd, int level, int optname, int optval, int optlen) {
+int getsockopt(int sockfd, int level, int optname, int *optval, socklen_t *optlen) {
   return getsockopt_f(sockfd, level, optname, optval, optlen);
 }
 

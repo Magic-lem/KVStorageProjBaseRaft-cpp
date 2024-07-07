@@ -1,6 +1,6 @@
 //
 // 定义一些函数指针，允许在运行时对系统的一些关键操作进行动态的钩子、替换或跟踪，以实现特定的监控、调试或者控制功能
-// 基于函数钩子（hook）的网络编程库
+//
 // created by magic_pri on 2024-6-27
 //
 #ifndef __MONSOON_HOOK_H__
@@ -10,6 +10,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <sys/ioctl.h>
+#include "fiber.hpp"
+#include "iomanager.hpp"
+#include "fd_manager.hpp"
 
 namespace monsoon {
 bool is_hook_enable();  // 当前线程是否使用hook
