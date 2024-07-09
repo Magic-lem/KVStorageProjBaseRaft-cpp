@@ -7,10 +7,15 @@
 #define UTIL_H
 
 
-// 格式化日至输出函数，能够打印详细的调试信息
+/*
+  格式化日至输出函数，能够打印详细的调试信息
+*/
 void DPrintf(const char* format, ...);
 
-// 定义一个线程安全的队列，用于异步写日志
+
+/*
+  定义一个线程安全的队列，用于异步写日志
+*/
 template <typename T>
 class LockQueue {
 public:
@@ -71,5 +76,52 @@ private:
 // 技术，即在对象被销毁时会自动解锁。另外， std::unique_lock 还支持超时等待和可中断等待的操作。
 
 
+
+/*
+  DEFER宏：一种在作用域结束时自动执行某些操作的方法，常用于确保资源释放、文件关闭、解锁互斥量等操作，即便函数因异常或其他原因提前返回也能确保这些操作被执行。
+*/
+template <class F>
+class DeferClass {
+public:
+  DeferClass(F&& f) : m_func(std::forward<F>(f)) {}     // 万能引用构造函数
+  DeferClass(const F& f) : m_func(*f) {}    // 常量左值引用构造函数
+  ~DeferClass() { m_func(); }   // 析构函数，当对象销毁时，去调用m_func函数
+
+  // 拷贝构造函数和赋值运算符被删除，以防止对象被复制
+  DeferClass(const DeferClass& e) = delete;
+  DeferClass& operator=(const DeferClass& e) = delete;
+
+private:
+  F m_func;   // 需要自动执行的函数
+};
+
+/*-------------------------------定义DEFER宏------------------------------------------------------*/
+#define _CONCAT(a, b) a##b    // _CONCAT将两个标识符拼接在一起，生成一个新的标识符
+// _MAKE_DEFER_(line)：定义一个DeferClass对象，名称为defer_placeholder和line拼接，传入一个空lambda表达式
+#define _MAKE_DEFER_(line) DeferClass _CONCAT(defer_placeholder, line) = [&]()      
+
+#undef DEFER
+#define DEFER _MAKE_DEFER_(__LINE__)   // DEFER，将当前行号传递给 _MAKE_DEFER_，从而生成唯一的变量名称
+// 使用示例
+/**
+void someFunction() {
+  std::ofstream file("example.txt");
+
+  DEFER {
+    file.close();
+  };
+
+  // ... 其他操作 ...
+}
+DEFER 宏创建了一个 DeferClass 对象，命名为 defer_placeholder 加上当前行号，例如 defer_placeholder123。
+这个对象在 DEFER 宏所在的作用域结束时（即 someFunction 返回或异常抛出时）自动调用 file.close()。
+ */
+/*-------------------------------定义DEFER宏------------------------------------------------------*/
+
+
+/*
+  自实现的断言
+*/
+void myAssert(bool condition, std::string message = "Assertion failed!");
 
 #endif

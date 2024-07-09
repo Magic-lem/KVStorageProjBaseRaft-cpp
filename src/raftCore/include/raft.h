@@ -13,9 +13,17 @@
 #include "RaftRpcUtil.h"
 #include "ApplyMsg.h"
 
+// 网络状态表示  todo：可以在rpc中删除该字段，实际生产中是用不到的.
+// 方便网络分区的时候debug，网络异常的时候为disconnected，只要网络正常就为AppNormal，防止matchIndex[]数组异常减小
+constexpr int Disconnected = 0;
+constexpr int AppNormal = 1;
 
-/* 投票状态 */
-// constexpr int Killed = 0;  // 编译器常量
+/* 投票状态 —— 编译期常量*/  
+constexpr int Killed = 0;
+constexpr int Voted = 1;   //本轮已经投过票了
+constexpr int Expire = 2;  //投票（消息、竞选者）过期
+constexpr int Normal = 3;
+
 
 // Raft节点类
 class Raft : public rafrRpcProctoc::raftRpc { // 继承自使用protobuf生成的raftRpc类
@@ -68,7 +76,7 @@ public:
   void Snapshot(int index, std::string snapshot);   // 快照管理
 
 public:
-  // 重写基类方法,因为rpc远程调用真正调用的是这个方法
+  // 重写基类（protobuf生成的raftRpc）方法,因为rpc远程调用真正调用的是这个方法
   // 序列化，反序列化等操作rpc框架都已经做完了，因此这里只需要获取值然后真正调用本地方法即可。
   void AppendEntries(google::protobuf::RpcController *controller, const ::raftRpcProctoc::AppendEntriesArgs *request,
                      ::raftRpcProctoc::AppendEntriesReply *response, ::google::protobuf::Closure *done) override;

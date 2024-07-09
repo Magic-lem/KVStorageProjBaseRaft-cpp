@@ -33,3 +33,15 @@ void DPrintf(const char *format, ...) {
         va_end(args);    // 结束处理可变参数
     }
 }
+
+
+/*
+myAssert
+用于断言
+*/
+void myAssert(bool condition, std::string message) {
+  if (!condition) {
+    std::cerr << "Error: " << message << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+}
