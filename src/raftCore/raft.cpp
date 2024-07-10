@@ -119,3 +119,162 @@ void Raft::AppendEntries1(const raftRpcProctoc::AppendEntriesArgs* args, raftRpc
   }
   }
 }
+
+
+/*
+doHeartBeat 函数
+主要功能：Raft协议中Leader节点的心跳发送函数
+*/
+void Raft::doHeartBeat() {
+  std::lock_guard<std::mutex> g(m_mtx);  // 锁定互斥量以确保线程安全
+
+  // 只有leader才需要发送心跳
+  if (m_status == Leader) {
+    DPrintf("[func-Raft::doHeartBeat()-Leader: {%d}] Leader的心跳定时器触发了且拿到mutex, 开始发送AE\n", m_me);
+    auto appendNums = std::make_shared<int>(1);   // 统计正确返回的节点数量
+
+    //对Follower（除了自己外的所有节点发送AE）
+    // todo 这里肯定是要修改的，最好使用一个单独的goruntime来负责管理发送log，因为后面的log发送涉及优化之类的
+    //最少要单独写一个函数来管理，而不是在这一坨
+    for (int i = 0; i < m_peers.size(); i++) {
+      if (i == m_me) {
+        continue;
+      }
+      DPrintf("[func-Raft::doHeartBeat()-Leader: {%d}] Leader的心跳定时器触发了 index:{%d}\n", m_me, i);
+      myAssert(m_nextIndex[i] >= 1, format("rf.nextIndex[%d] = {%d}", i, m_nextIndex[i]));  // 确保发送给Follower的日志索引在正常范围
+
+      // 判断是发送AE（AppendEntries）还是快照
+      if (m_nextIndex[i] <= m_lastSnapshotIncludeIndex) { // 需要发送的日志条目已经删除了，因为形成了快照，所要发送快照
+        std::thread t(&Raft::leaderSendSnapShot, this, i);   // 创建新线程hi行发送快照函数
+        t.detach();
+        continue;
+      }
+
+      // 发送AE
+      int preLogIndex = -1;
+      int preLogTerm = -1;
+      getPrevLogInfo(i, &preLogIndex, &preLogTerm); // 获取上次与第i个Follower同步的最后一个日志条目的索引和任期
+ 
+      // 构造AE请求参数 AppendEntriesArgs
+      std::shared_ptr<raftRpcProctoc::AppendEntriesArgs> appendEntriesArgs = std::make_shared<raftRpcProctoc::AppendEntriesArgs>(); 
+      appendEntriesArgs->set_term(m_currentTerm);
+      appendEntriesArgs->set_leaderid(m_me);
+      appendEntriesArgs->set_prevlogindex(preLogIndex);
+      appendEntriesArgs->set_prevlogterm(PrevLogTerm);
+      appendEntriesArgs->clear_entries();
+      appendEntriesArgs->set_leadercommit(m_commitIndex);
+
+      // 添加日志条目
+      if (preLogIndex != m_lastSnapshotIncludeIndex) {  
+        // 前一个日志条目在快照之外，应该从该索引之后开始发送日志条目
+        for (int j = getSlicesIndexFromLogIndex(prelogindex) + 1; j < m_logs.size(); ++j) {
+          raftRpcProctoc::LogEntry* sendEntryPtr = appendEntriesArgs->add_entries();  // 返回一个指向新添加的日志条目的指针
+          *sendEntryPtr = m_logs[j];  // 将该指针指向日志条目，则完成这个条目的添加    
+        }
+      } else {  // 即 preLogIndex == m_lastSnapshotIncludeIndex
+        // 前一个日志条目正好是快照的分界点，那可以把Leader的所以日志条目都加入
+        for (const auto& item: m_logs) {
+          raftRpcProctoc::LogEntry* sendEntryPtr = appendEntriesArgs->add_entries();
+          *sendEntryPtr = item; // =是可以点进去的，可以点进去看下protobuf如何重写这个赋值运算符的，实现直接将一个 protobuf 消息对象赋值给另一个消息对象
+        }
+      }
+
+      // 检查：leader对每个节点发送的日志长短不一（每个follower的情况不同），但是都保证从prevIndex发送直到最后
+      int lastLogIndex = getLastLogIndex();
+      myAssert(appendEntriesArgs->prevlogindex() + appendEntriesArgs->entries_size() == lastLogIndex, format("appendEntriesArgs.PrevLogIndex{%d}+len(appendEntriesArgs.Entries){%d} != lastLogIndex{%d}", appendEntriesArgs->prevlogindex(), appendEntriesArgs->entries_size(), lastLogIndex));
+
+      // 构造 AppendEntries 响应参数
+      const std::shared_ptr<raftRpcProctoc::AppendEntriesReply> appendEntriesReply = std::make_shared<raftRpcProctoc::AppendEntriesReply>();
+      appendEntriesReply->set_appstate(Disconnected);
+
+      // 创建新线程，利用sendAppendEntries函数在新线程中接收并处理AppendEntries请求
+      std::thread t(&Raft::sendAppendEntries, this, i, appendEntriesArgs, appendEntriesReply, appendNums);
+      t.detach();
+    }
+    m_lastResetHearBeatTime = now();   // 更新上一次心跳时间
+  }
+}
+
+
+/*
+leaderHearBeatTicker 函数
+主要功能：定时器功能，在 Raft 协议的 Leader 节点中用于控制定期向Follower节点发送心跳消息
+*/
+void Raft::leaderHearBeatTicker() {
+  while (true) {
+    //不是leader的话就没有必要进行后续操作，况且还要拿锁，很影响性能，目前是睡眠，后面再优化优化
+    while (m_status != Leader) {
+    usleep(1000 * HeartBeatTimeout);   // 如果不是 Leader，则休眠一段时间（HeartBeatTimeout 毫秒），然后重新检查
+    }
+    static std::atomic<int32_t> atomicCount = 0;    // 统计Leader节点的心跳定时器的执行次数
+
+    std::chrono::duration<signed long int, std::ratio<1, 1000000000>> suitableSleepTime{};   // 记录合适的睡眠时间
+    std::chrono::system_clock::time_point wakeTime{};    // 记录当前时间
+    {  
+    std::lock_guard<std::mutex> lock(m_mtx);   // 加锁
+    wakeTime = now();
+    // 睡眠时间 = 心跳超时时间 HeartBeatTimeout + 最后一次重置心跳时间 m_lastResetHearBeatTime - 当前时间
+    suitableSleepTime = std::chrono::milliseconds(HeartBeatTimeout) + m_lastResetHearBeatTime - wakeTime;   
+    }  // 出了这个域，已自动解锁
+
+    if (std::chrono::duration<double, std::milli>(suitableSleepTime).count() > 1) {  // 适合睡眠时间大于 1 毫秒，则执行睡眠操作
+      std::cout << atomicCount << "\033[1;35m leaderHearBeatTicker();函数设置睡眠时间为: "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(suitableSleepTime).count() << " 毫秒\033[0m"
+                << std::endl;
+      // 获取当前时间点
+      auto start = std::chrono::steady_clock::now();    // 稳态时钟，在测量时间间隔时特别有用，因为它不会受到系统时间调整的影响，确保时间间隔测量的准确性和稳定性
+      usleep(std::chrono::duration_cast<std::chrono::microseconds>(suitableSleepTime).count());
+
+      // 获取睡眠结束后的时间点
+      auto end = std::chrono::steady_clock::now();
+
+      // 计算时间差并输出结果（单位为毫秒）
+      std::chrono::duration<double, std::milli> duration = end - start;
+
+      // 使用ANSI控制序列将输出颜色修改为紫色
+      std::cout << atomicCount << "\033[1;35m leaderHearBeatTicker();函数实际睡眠时间为: " << duration.count() << " 毫秒\033[0m" << std::endl;
+      ++atomicCount;
+    }
+
+    // 睡眠结束
+    if (std::chrono::duration<double, std::milli>(m_lastResetHearBeatTime - wakeTime).count() > 0) {
+      // 如果在睡眠的这段时间定时器被重置了，则再次睡眠
+      continue;
+    }
+
+    // 执行心跳
+    doHeartBeat();
+  }
+}
+
+/*
+sendAppendEntries 函数
+主要功能：向指定的服务器发送附加日志条目（AppendEntries）请求
+输入参数：
+    server: raft节点ID，发送请求给该节点。
+    args: 要发送的附加日志条目请求参数。
+    reply: 用于存储服务器的回复。
+    appendNums: 用于跟踪成功追加日志条目的服务器数量。
+*/
+bool Raft::sendAppendEntries(int server, std::shared_ptr<raftRpcProctoc::AppendEntriesArgs> args,
+                             std::shared_ptr<raftRpcProctoc::AppendEntriesReply> reply,
+                             std::shared_ptr<int> appendNums) {
+  // 调用目标节点的重写的AppendEntries函数接收追加日志请求
+  bool ok = m_peers->[server]->AppendEntries(args.get(), reply.get());  // RPC发挥远程调用的作用，注意智能指针要转换为裸指针
+
+  // 检查网络通信
+  //这个ok是网络是否正常通信的ok，而不是requestVote rpc是否投票的rpc
+  // 如果网络不通的话肯定是没有返回的，不用一直重试
+  // todo： paper中5.3节第一段末尾提到，如果append失败应该不断的retries ,直到这个log成功的被store
+  if (!ok) {  // 通信失败
+    DPrintf("[func-Raft::sendAppendEntries-raft{%d}] leader 向节点{%d}发送AE rpc失敗", m_me, server);
+    return ok;
+  }
+
+  // 通信成功
+  DPrintf("[func-Raft::sendAppendEntries-raft{%d}] leader 向节点{%d}发送AE rpc成功", m_me, server);
+  
+  if (reply->appstate() == Disconnected) {  // 通信成功，但是返回状态为Disconnected，远端 RPC 节点已经断连或不可用
+    return ok;
+  }
+}

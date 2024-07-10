@@ -102,8 +102,8 @@ private:
   
   int m_commitIndex;    // 当前节点最大的已提交的日志条目索引
   int m_lastApplied;    // 已经应用到状态机的最大的日志条目索引
-  std::vector<int> m_nextIndex;   // 发送给本服务器的下一个日志条目的索引
-  std::vector<int> m_matchIndex;  // 本服务器已知的最大匹配日志条目的索引
+  std::vector<int> m_nextIndex;   // 发送每个Follower的下一个日志条目的索引
+  std::vector<int> m_matchIndex;  // 记录每个Follower节点与Leader的匹配日志条目的最大索引
 
   enum Status { Follower, Candidate, Leader };
   Status m_status;    // 当前节点的状态（Follower、Candidate、Leader）
