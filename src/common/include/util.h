@@ -131,4 +131,78 @@ void myAssert(bool condition, std::string message = "Assertion failed!");
 std::chrono::_V2::system_clock::time_point now() { return std::chrono::high_resolution_clock::now(); }
 
 
+/*
+  sleepNMilliseconds：睡眠一段时间
+*/
+void sleepNMilliseconds(int N) { std::this_thread::sleep_for(std::chrono::milliseconds(N)); };
+
+
+
+/*
+  Op是kv传递给raft的command
+  Op表示客户端操作请求，并提供将操作序列化为字符串的方法
+*/
+class Op {
+public:
+  std::string Operation;  // "Get" "Put" "Append" 等作用于KV数据库的操作
+  std::string Key;        // key
+  std::string Value;      // value
+  std::string ClientId;  //客户端号码
+  int RequestId;         //客户端号码请求的Request的序列号，为了保证线性一致性
+
+public:
+  /*
+  asString：将 Op 对象序列化为字符串
+  // todo
+  // 为了协调raftRPC中的command只设置成了string,这个的限制就是正常字符中不能包含|
+  // 当然后期可以换成更高级的序列化方法，比如protobuf
+  */
+  std::string asString() const {
+    std::stringstream ss;
+    boost::archive::text_oarchive oa(ss);   // 使用boost库序列化
+
+    // write class instance to archive
+    oa << *this;
+    // close archive
+
+    return ss.str();
+  }
+
+  /*
+  parseFromString(std::string str) 方法:将字符串反序列化解析为 Op 对象
+  */
+  bool parseFromString(std::string str) {
+    std::stringstream iss(str);
+    boost::archive::text_iarchive ia(iss);
+    // read class state from archive
+    ia >> *this;
+    return true;  // todo : 解析失敗如何處理，要看一下boost庫了
+  }
+
+public: 
+  /*
+  重载opeartor<<操作符，以自定义格式输出 Op 对象。
+  输出包括 Operation、Key、Value、ClientId 和 RequestId 字段。
+  */
+  friend std::ostream& operator<<(std::ostream& os, const Op& obj) {
+    os << "[MyClass:Operation{" + obj.Operation + "},Key{" + obj.Key + "},Value{" + obj.Value + "},ClientId{" +
+              obj.ClientId + "},RequestId{" + std::to_string(obj.RequestId) + "}";
+    return os;
+  }
+
+private:
+  // 集成boost库，利用boost::serialization 库进行序列化和反序列化。
+  friend class boost::serialization::access;   
+  template <class Archive>
+  void serialize(Archive& ar, const unsigned int version) {
+    ar& Operation;
+    ar& key;
+    ar& Value;
+    ar& ClientId;
+    ar& RequestId;
+  }
+};
+
+
+
 #endif

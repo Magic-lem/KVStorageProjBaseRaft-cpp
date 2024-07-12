@@ -12,6 +12,7 @@
 // @brief 维护当前节点对其他某一个节点的所有rpc发送通信的功能
 // 对于一个raft节点来说，对于任意其他的节点都要维护一个通信实例和一个rpc连接（MprpcChannel）
 // RaftRpcUtil封装了对其他节点的三种主要的Raft RPC方法的调用，使得这些调用更加简洁和易于使用。
+// 实现方法是维护了当前raft节点的一个代理（存根）stub，使得能够通过这个stub访问该raft结点的函数
 class RaftRpcUtil
 {
 public:

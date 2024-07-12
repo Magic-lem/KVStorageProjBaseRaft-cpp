@@ -127,7 +127,7 @@ Raft算法又被称为基于**日志复制**的一致性算法，旨在解决分
 - **`心跳、日志同步`：**leader向follower发送心跳（AppendEntryRPC）用于告诉follower自己的存在以及通过心跳来携带日志以同步
 - **`日志的term`：**在日志提交的时候，会记录这个日志在什么“时候”（哪一个term）记录的，用于后续日志的新旧比较
 - **`日志条目 entry`：**日志条目是日志的**基本单元**。每个日志条目记录了一次状态变化或一个命令。日志条目包含了如下几个关键信息：
-  - 索引（Index）：该日志条目在日志中的位置。
+  - 索引（Index）：该日志条目在日志中的位置。（索引是连续的，不会因为Term改变而改变）
   - 任期（Term）：该日志条目被创建时的任期号。
   - 命令（Command）：要应用于状态机的具体命令或操作。
 - **`日志截断（log truncation）`：**在发现日志不匹配时，从某个索引位置开始删除现有日志条目，并用新的日志条目替换这些位置的内容。这是一种确保日志一致性的方法。
@@ -137,6 +137,8 @@ Raft算法又被称为基于**日志复制**的一致性算法，旨在解决分
 日志中保存<font color='cornflowerblue'>**客户端发送来的命令**</font>，上层的状态机根据日志执行命令，那么**日志一致，自然上层的状态机就是一致的**。结构如下：
 
 ![img](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\日志结构.png)
+
+其中，每一个元素被称为一个日志条目`entry`，每个日志条目包含一个Index、Term以及具体的命令Command。
 
 **核心思想**：Raft算法可以让多个节点的上层状态机保持一致的关键是让==**各个节点的日志保持一致**== **。**
 
@@ -463,7 +465,14 @@ private:
 
 ### 6.2 Leader选举
 
+**Leader选举的整体流程图：**
 
+![选举](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\选举.png)
+
+- **electionTimeOutTicker** ：负责查看是否该发起选举，如果该发起选举就执行doElection发起选举。
+- **doElection** ：实际发起选举，构造需要发送的rpc，并多线程调用sendRequestVote处理rpc及其相应。
+- **sendRequestVote** ：负责发送选举中的RPC，在发送完rpc后还需要负责接收并处理对端发送回来的响应。
+- **RequestVote** ：接收别人发来的选举请求，主要检验是否要给对方投票。
 
 
 
@@ -473,7 +482,7 @@ private:
 
 ![c420e41da1361a0c55ff50fd7b45b4e0](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\日志复制心跳.png)
 
-- **leaderHearBeatTicker** :定时器，负责查看是否该发送心跳了，如果该发起就执行doHeartBeat。
+- **leaderHearBeatTicker** :作为定时器功能，负责查看是否该发送心跳了，如果该发起就执行doHeartBeat。
 - **doHeartBeat** :实际发送心跳，判断到底是构造需要发送的rpc，并多线程调用sendRequestVote处理rpc及其相应。
 - **sendAppendEntries** :负责发送日志的RPC，在发送完rpc后还需要负责接收并处理对端发送回来的响应。
 - **leaderSendSnapShot** :负责发送快照的RPC，在发送完rpc后还需要负责接收并处理对端发送回来的响应。

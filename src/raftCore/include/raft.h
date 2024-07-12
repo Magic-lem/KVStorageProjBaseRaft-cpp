@@ -6,12 +6,14 @@
 #ifndef RAFT_H    // 预处理指令，防止头文件的重复包含
 #define RAFT_H
 
-
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
 #include <mutex>
 #include <vector>
 #include <memory>
 #include "RaftRpcUtil.h"
 #include "ApplyMsg.h"
+#include "../../common/include/config.h"
 
 // 网络状态表示  todo：可以在rpc中删除该字段，实际生产中是用不到的.
 // 方便网络分区的时候debug，网络异常的时候为disconnected，只要网络正常就为AppNormal，防止matchIndex[]数组异常减小
@@ -62,7 +64,7 @@ public:
 
   void pushMsgToKvServer(ApplyMsg msg);     // 将消息推送到 KV 服务器
   void readPersist(std::string data);    // 读取持久化数据
-  std::string persistData();    
+  std::string persistData();    // 获取要持久化的状态数据
 
   void Start(Op command, int *newLogIndex, int *newLogTerm, bool *isLeader);    // 开始一个新的命令
 
@@ -115,7 +117,23 @@ private:
   int m_lastSnapshotIncludeIndex;     // 快照中包含的最后一个日志条目的索引
   int m_lastSnapshotIncludeTerm;      // 快照中包含的最后一个日志条目的任期号
   std::unique_ptr<monsoon::IOManager> m_ioManager = nullptr;    // 指向IO管理器，用于管理 I/O 操作
-};
+
+  // 用于序列化raft节点状态信息的结构类
+  class BoostPersistRaftNode {
+   public:
+    friend class boost::serialization::access;  // Boost 序列化库访问权限，允许该类的 serialize 函数访问私有成员变量进行序列化操作
+    // When the class Archive corresponds to an output archive, the
+    // & operator is defined similar to <<.  Likewise, when the class Archive
+    // is a type of input archive the & operator is defined similar to >>.
+    template <class Archive>
+    void serialize(Archive &ar, const unsigned int version) {   // 定义了对象的序列化操作
+      ar &m_currentTerm;
+      ar &m_votedFor;
+      ar &m_lastSnapshotIncludeIndex;
+      ar &m_lastSnapshotIncludeTerm;
+      ar &m_logs;
+    }
+  };
 
 
 #endif
