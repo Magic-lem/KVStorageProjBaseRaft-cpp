@@ -6,6 +6,21 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/serialization/access.hpp>
+#include <condition_variable>  // pthread_condition_t
+#include <functional>
+#include <iostream>
+#include <mutex>  // pthread_mutex_t
+#include <queue>
+#include <random>
+#include <sstream>
+#include <thread>
+#include "config.h"
 
 /*
   格式化日至输出函数，能够打印详细的调试信息
@@ -64,7 +79,7 @@ private:
   std::queue<T> m_queue;    // 存储队列元素的容器
   std::mutex m_mutex;     // 互斥锁，用于保护队列的访问
   std::condition_variable m_condvariable;     // 条件变量，用于线程间的同步
-}
+};
 // 在LockQueue中，两个对锁的管理用到了RAII的思想，防止中途出现问题而导致资源无法释放的问题！！！
 // std::lock_guard 和 std::unique_lock 都是 C++11 中用来管理互斥锁的工具类，它们都封装了 RAII（Resource Acquisition Is
 // Initialization）技术，使得互斥锁在需要时自动加锁，在不需要时自动解锁，从而避免了很多手动加锁和解锁的繁琐操作。
@@ -204,5 +219,28 @@ private:
 };
 
 
+
+///////////////////////////////////////////////kvserver reply err to clerk
+
+const std::string OK = "OK";
+const std::string ErrNoKey = "ErrNoKey";
+const std::string ErrWrongLeader = "ErrWrongLeader";
+
+////////////////////////////////////获取可用端口
+
+bool isReleasePort(unsigned short usPort);
+
+bool getReleasePort(short& port);
+
+
+template <typename... Args>
+std::string format(const char* format_str, Args... args) {
+  std::stringstream ss;
+  int _[] = {((ss << args), 0)...};
+  (void)_;
+  return ss.str();
+}
+
+std::chrono::milliseconds getRandomizedElectionTimeout();
 
 #endif

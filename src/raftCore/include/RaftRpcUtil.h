@@ -8,6 +8,7 @@
 
 // 引入Raft RPC通信的消息和服务定义
 #include "raftRPC.pb.h" // 这是个由protobuf生成的头文件
+#include "mprpccontroller.h"
 
 // @brief 维护当前节点对其他某一个节点的所有rpc发送通信的功能
 // 对于一个raft节点来说，对于任意其他的节点都要维护一个通信实例和一个rpc连接（MprpcChannel）
@@ -25,7 +26,7 @@ public:
   bool RequestVote(raftRpcProctoc::RequestVoteArgs *args, raftRpcProctoc::RequestVoteReply *response);    // 请求投票
 
 private:
-  rafrRpcProctoc::raftRpc_Stub *stub_;   // 代理（存根），用于调用远程RPC服务节点上的服务方法
+  raftRpcProctoc::raftRpc_Stub *stub_;   // 代理（存根），用于调用远程RPC服务节点上的服务方法
 };
 
 #endif

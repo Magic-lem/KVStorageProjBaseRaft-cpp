@@ -12,7 +12,7 @@ AppendEntries 方法
     args：指向 AppendEntriesArgs 请求参数的指针。
     response：指向 AppendEntriesReply 响应参数的指针。
 */
-bool RaftRpcUtil::AppendEntries(raftRpcProctoc::AppendEntriesArgs *args, rafrRpcProctoc::AppendEntriesReply *response) {
+bool RaftRpcUtil::AppendEntries(raftRpcProctoc::AppendEntriesArgs *args, raftRpcProctoc::AppendEntriesReply *response) {
   MprpcController controller;
   stub_->AppendEntries(&controller, args, response, nullptr);   // 调用注册的AppendEntries服务方法
   return !controller.Failed();
@@ -26,7 +26,7 @@ InstallSnapshot 方法
     response：指向 InstallSnapshotResponse 响应参数的指针。
 */
 bool RaftRpcUtil::InstallSnapshot(raftRpcProctoc::InstallSnapshotRequest *args,
-                                  rafrRpcProctoc::InstallSnapshotResponse *response) {
+                                  raftRpcProctoc::InstallSnapshotResponse *response) {
   MprpcController controller;
   stub_->InstallSnapshot(&controller, args, response, nullptr);
   return !controller.Failed();

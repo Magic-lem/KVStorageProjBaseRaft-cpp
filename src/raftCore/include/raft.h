@@ -14,6 +14,10 @@
 #include "RaftRpcUtil.h"
 #include "ApplyMsg.h"
 #include "../../common/include/config.h"
+#include "../../common/include/util.h"
+#include "raftRPC.pb.h"
+#include "Persister.h"
+#include "iomanager.hpp"
 
 // 网络状态表示  todo：可以在rpc中删除该字段，实际生产中是用不到的.
 // 方便网络分区的时候debug，网络异常的时候为disconnected，只要网络正常就为AppNormal，防止matchIndex[]数组异常减小
@@ -28,7 +32,7 @@ constexpr int Normal = 3;
 
 
 // Raft节点类
-class Raft : public rafrRpcProctoc::raftRpc { // 继承自使用protobuf生成的raftRpc类
+class Raft : public raftRpcProctoc::raftRpc { // 继承自使用protobuf生成的raftRpc类
 public:
   void AppendEntries1(const raftRpcProctoc::AppendEntriesArgs *args, raftRpcProctoc::AppendEntriesReply *reply);    // 实现 AppendEntries RPC 方法
   void applierTicker();     // 负责周期性地将已提交的日志应用到状态机
@@ -88,7 +92,10 @@ public:
   void RequestVote(google::protobuf::RpcController *controller, const ::raftRpcProctoc::RequestVoteArgs *request,
                    ::raftRpcProctoc::RequestVoteReply *response, ::google::protobuf::Closure *done) override;
 
-
+public:
+  void init(std::vector<std::shared_ptr<RaftRpcUtil>> peers, int me, std::shared_ptr<Persister> persister,
+            std::shared_ptr<LockQueue<ApplyMsg>> applyCh);
+            
 private:
   std::mutex m_mtx;    // mutex类对象，用于加互斥锁
 
@@ -100,7 +107,7 @@ private:
   int m_me;   // 当前节点的索引
   int m_currentTerm;    // 当前节点的任期号
   int m_votedFor;     // 当前节点在本任期内投票的候选人ID
-  std::vector<rafrRpcProctoc::LogEntry> m_logs;  // 日志条目数组
+  std::vector<raftRpcProctoc::LogEntry> m_logs;  // 日志条目数组
   
   int m_commitIndex;    // 当前节点最大的已提交的日志条目索引
   int m_lastApplied;    // 已经应用到状态机的最大的日志条目索引
@@ -133,7 +140,15 @@ private:
       ar &m_lastSnapshotIncludeTerm;
       ar &m_logs;
     }
+
+    int m_currentTerm;
+    int m_votedFor;
+    int m_lastSnapshotIncludeIndex;
+    int m_lastSnapshotIncludeTerm;
+    std::vector<std::string> m_logs;
+    std::unordered_map<std::string, int> umap;
   };
+};
 
 
 #endif

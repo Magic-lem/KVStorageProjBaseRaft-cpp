@@ -12,7 +12,7 @@ Save 函数
 主要功能：将传入的 raftstate 和 snapshot 保存到本地文件（持久化）
 TODO：会涉及反复打开文件的操作，没有考虑如果文件出现问题会怎么办？？
 */
-void Persister::Save(std::string raftstate, std::string snapshot); {
+void Persister::Save(std::string raftstate, std::string snapshot) {
   std::lock_guard<std::mutex> lg(m_mtx);   // 加互斥锁
   clearRaftStateAndSnapshot();    // 清除之前保存的 Raft 状态和快照
   // 将raftstate和snapshot写入本地文件

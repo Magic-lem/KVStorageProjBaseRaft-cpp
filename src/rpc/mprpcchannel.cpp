@@ -2,6 +2,7 @@
 // RpcChannel派生类mprpcchannel的实现
 // created by magic_pri on 2024-6-20
 // 
+#include <string>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -22,7 +23,7 @@
     short port：RPC服务器的端口号。
     bool connectNow：是否立即连接到RPC服务器。
 */
-MprpcChannel::MprpcChannel(string ip, short port, bool connectNow) : m_ip(ip), m_port(port), m_clientFd(-1) {
+MprpcChannel::MprpcChannel(std::string ip, short port, bool connectNow) : m_ip(ip), m_port(port), m_clientFd(-1) {
   // 使用tcp编程，完成rpc方法的远程调用，使用的是短连接，因此通信结束后即断开连接，每次都要重新连接上去
   // TODO: 待改成长连接。
   if (!connectNow) {
@@ -96,7 +97,7 @@ void MprpcChannel::CallMethod(const google::protobuf::MethodDescriptor *method, 
 
     // 将请求头序列化
     std::string rpc_header_str;
-    if (!rpcHeader->SerializeToString(&rpc_header_str)) {
+    if (!rpcHeader.SerializeToString(&rpc_header_str)) {
         controller->SetFailed("serialize rpc header error!");
         return;
     }
@@ -173,7 +174,7 @@ newConnect 函数
 为什么ip使用chat*类型：
     许多网络编程接口和系统调用中，使用C风格的字符串（char* 或 const char*）作为参数是历史遗留问题。这些接口设计得比较早，在C语言中没有std::string这种类型，因此沿用了C风格的字符串。
 */
-bool MprpcChannel::newConnect(const char* ip, uint16_t port, string* errMsg) {
+bool MprpcChannel::newConnect(const char* ip, uint16_t port, std::string* errMsg) {
   /*
   socket(AF_INET, SOCK_STREAM, 0)：创建一个TCP套接字。
       AF_INET：地址族，表示使用IPv4。
@@ -181,7 +182,7 @@ bool MprpcChannel::newConnect(const char* ip, uint16_t port, string* errMsg) {
       0：协议，通常为0，表示自动选择合适的协议。
   */
   int clientfd = socket(AF_INET, SOCK_STREAM, 0);   // 返回套接字的文件描述符、
-  int (-1 == clientfd) {
+  if (-1 == clientfd) {
     char errtxt[512] = {0};
     sprintf(errtxt, "Create socket error! errno:%d", errno);
     m_clientFd = -1;
@@ -196,10 +197,10 @@ bool MprpcChannel::newConnect(const char* ip, uint16_t port, string* errMsg) {
   server_addr.sin_addr.s_addr = inet_addr(ip);
 
   // 连接远程RPC服务节点
-  if (-1 == connect(clientfd, (strcut sockaddr*)&server_addr, sizeof(server_addr))) {  // hook函数
+  if (-1 == connect(clientfd, (struct sockaddr*)&server_addr, sizeof(server_addr))) {  // hook函数
     // 连接失败
     close(clientfd);
-    cahr errtxt[512] = {0};
+    char errtxt[512] = {0};
     sprintf(errtxt, "connect fail! errno:%d", errno);
     m_clientFd = -1;
     *errMsg = errtxt;
