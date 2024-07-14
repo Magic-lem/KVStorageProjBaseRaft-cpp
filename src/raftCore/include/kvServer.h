@@ -6,7 +6,7 @@
 #ifndef SKIP_LIST_ON_RAFT_KVSERVER_H
 #define SKIP_LIST_ON_RAFT_KVSERVER_H
 
-
+#include "kvServerRPC.pb.h"
 
 
 #endif

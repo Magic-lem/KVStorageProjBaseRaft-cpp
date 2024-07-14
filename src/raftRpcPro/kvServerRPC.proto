@@ -1,0 +1,41 @@
+// 注册kv数据库的RPC调用的消息类型和服务方法
+
+syntax = "proto3";
+
+package raftKVRpcProtoc;   // 命名空间
+
+option cc_generic_services = true;   // 开启stub服务
+
+// Get请求的消息类型
+message GetArgs {
+    bytes Key = 1;              // 要获取的键
+    bytes ClientId = 2;         // 客户端ID，发出请求的客户端
+    int32 RequestId = 3;          // 请求ID，标识请求的唯一性
+}
+
+// Get响应的类型
+message GetReply {
+    bytes Err = 1;              // 错误信息     
+    bytes Value = 2;            // 请求的值
+}
+
+// PutAppendArgs  put或者append请求的消息类型
+message PutAppendArgs {
+    bytes Key = 1;              // 键
+    bytes Vlue = 2;             // 值
+    bytes Op = 3;               // Put or Append
+    bytes ClientId = 4;         // 客户端ID
+    int32 RequestId = 5;          // 请求ID，标识请求的唯一性
+}
+
+// PutAppendReply  put或者append请求的响应类型
+message PutAppendReply {
+    bytes Err = 1;    // 错误信息
+}
+
+
+// 定义RPC服务和服务方法
+service kvServerRpc {
+    rpc PutAppend(PutAppendArgs) returns(PutAppendReply);           // PutAppend服务方法
+    rpc Get(GetArgs) returns(GetReply);                             // Get服务方法
+}
