@@ -83,7 +83,7 @@ void Raft::AppendEntries1(const raftRpcProctoc::AppendEntriesArgs* args, raftRpc
     reply->set_term(m_currentTerm);
     reply->set_updatenextindex(m_lastSnapshotIncludeIndex + 1);
   }
-  // 情况3： prevLogIndex 在当前节点的日志范围内，需要进一步检查 prevLogTerm 是否匹配。
+  // 情况3： prevLogIndex 在当前节点的日志范围内，需要进一步检查输入的logIndex所对应的log的任期是不是logterm。
   // 情况3.1：prevLogIndex和prevLogTerm都匹配，还需要一个一个检查所有的当前新发送的日志匹配情况（有可能follower已经有这些新日志了）
   if (matchLog(args->prevlogindex(), args->prevlogterm())) {
     // 如果term也匹配。不能直接截断，必须一个一个检查，因为发送来的log可能是之前的，直接截断可能导致“取回”已经在follower日志中的条目
@@ -433,7 +433,6 @@ void Raft::leaderSendSnapShot(int server) {
   // 成功完成快照的发送和响应接收，更新所保存的追随者状态
   m_matchIndex[server] = args.lastsnapshotincludeindex();
   m_nextIndex[server] = m_matchIndex[server] + 1;
-
 }
 
 /*

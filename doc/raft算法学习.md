@@ -472,11 +472,9 @@ private:
 - **electionTimeOutTicker** ：负责查看是否该发起选举，如果该发起选举就执行doElection发起选举。
 - **doElection** ：实际发起选举，构造需要发送的rpc，并多线程调用sendRequestVote处理rpc及其相应。
 - **sendRequestVote** ：负责发送选举中的RPC，在发送完rpc后还需要负责接收并处理对端发送回来的响应。
-- **RequestVote** ：接收别人发来的选举请求，主要检验是否要给对方投票。
+- **RequestVote** ：接收别人发来的选举请求，主要检验是否要给对方投票（依据term、日志条目索引的新旧）。
 
-
-
-### 6.3 日志复制、心跳
+### 6.3 日志复制、心跳（核心）
 
 **日志复制和心跳的整体流程图：**
 
@@ -488,8 +486,6 @@ private:
 - **leaderSendSnapShot** :负责发送快照的RPC，在发送完rpc后还需要负责接收并处理对端发送回来的响应。
 - **AppendEntries** :Follower节点，接收leader发来的日志请求，主要检验用于检查当前日志是否匹配并同步leader的日志到本机。
 - **InstallSnapshot** ::Follower节点，接收leader发来的快照请求，同步快照到本机。
-
-
 
 #### AppendEntries
 
@@ -546,10 +542,10 @@ void Raft::AppendEntries1(const raftRpcProctoc::AppendEntriesArgs* args, raftRpc
     reply->set_term(m_currentTerm);
     reply->set_updatenextindex(m_lastSnapshotIncludeIndex + 1);
   }
-  // 情况3： prevLogIndex 在当前节点的日志范围内，需要进一步检查 prevLogTerm 是否匹配。
+  // 情况3： prevLogIndex 在当前节点的日志范围内，需要进一步输入的logIndex所对应的log的任期是不是logterm。
   // 情况3.1：prevLogIndex和prevLogTerm都匹配，还需要一个一个检查所有的当前新发送的日志匹配情况（有可能follower已经有这些新日志了）
   if (matchLog(args->prevlogindex(), args->prevlogterm())) {
-    // 如果term也匹配。不能直接截断，必须一个一个检查，因为发送来的log可能是之前的，直接截断可能导致“取回”已经在follower日志中的条目
+    // 如果匹配。不能直接截断，必须一个一个检查，因为发送来的log可能是之前的，直接截断可能导致“取回”已经在follower日志中的条目
     // 不直接截断的处理逻辑是逐条检查和更新日志，而不是简单地从发现不匹配的位置开始删除所有后续日志条目。这是为了避免误删已经存在并且可能是正确的日志条目。
     for (int i = 0; i < args->entries_size(); i++) {
       auto log = args->entries(i);  // 遍历取出日志条目
@@ -611,7 +607,620 @@ void Raft::AppendEntries1(const raftRpcProctoc::AppendEntriesArgs* args, raftRpc
 }
 ```
 
-让我们简单分析下代码。
+让我们简单分析下代码。本函数为通过RPC实现的远程调用，在Leader节点中通过RPC调用这个函数，处理所传输的日志添加请求。
+
+**Follower节点在收到这个请求时，会对其进行处理。处理主要包括以下几个步骤：**
+
+1. 检查Leader节点发送过来的请求消息中所携带的`term`和Follwer节点的`term`大小，来判断是否为过期消息。（**无论什么时候收到rpc请求和响应都要检查term**）
+2. 比较请求消息中的上一个日志条目索引`args->prevlogindex()`和当前Follower节点的最新日志索引**，<font color='red'>判断如何处理这次 AppendEntries 请求（不同index情况决定了是如何处理）</font>**。
+3. 索引匹配后，还需要检查输入的`prevLogIndex`所对应的log的任期是不是`args->prevlogterm()`，判断日志条目是否已经过期需要更新。
+
+这里，我们使用了**日志寻找匹配加速**的方法，具体代码：
+
+```cpp
+reply->set_updatenextindex(args->prevlogindex());   // 初始设置为prevlogindex
+    // 从 prevlogindex 开始，向前查找与 prevlogterm 不同term的第一个日志条目，并更新 updatenextindex
+    for (int index = args->prevlogindex(); index >= m_lastSnapshotIncludeIndex; --index) {  
+        if (getLogTermFromLogIndex(index) != getLogTermFromLogIndex(args->prevlogindex())) {  // 使用了匹配加速，如果某一个日志不匹配，那么这一个日志所在的term的所有日志大概率都不匹配，直接找与他不同term的最后一个日志条目
+          reply->set_updatenextindex(index + 1);
+          break;
+        }
+    }
+    reply->set_success(false);
+    reply->set_term(m_currentTerm);
+    return;
+```
+
+当`prevLogIndex`和当前节点的日志索引匹配，但是在当前节点中`prevLogIndex`所对应的log的任期不是`args->prevlogterm()`。按照常规的方法，此时需要一个一个地向前倒退。但这样如果前面不匹配的日志条目过多，就会导致消耗过多资源。因此这里直接寻找当前节点中与`prevLogIndex`所对应的log的任期不同的最新日志（如果某一个日志不匹配，那么这一个日志所在的term的所有日志大概率都不匹配），这样虽然可能导致一些日志没必要重新同步，但是避免了一步一步去匹配。
+
+整理这个函数的处理逻辑如下：
+
+```cpp
+AppendEntries1
+├── 获取互斥锁并设置初始状态
+├── 判断消息任期号与当前任期号
+│   ├── 消息任期号 < 当前任期号
+│   │   └── 拒绝请求并更新 reply
+│   │       ├── 设置 success 为 false
+│   │       ├── 设置 term 为当前任期号
+│   │       └── 设置 updatenextindex 为 -100
+│   └── 消息任期号 >= 当前任期号
+│       ├── 消息任期号 > 当前任期号
+│       │   ├── 更新当前任期号
+│       │   ├── 更新节点状态为 Follower
+│       │   └── 重置 votedFor
+│       └── 消息任期号 == 当前任期号
+│           ├── 更新状态为 Follower
+│           └── 重置选举计时器
+├── 检查 prevLogIndex 的情况
+│   ├── prevLogIndex > 当前节点的 lastLogIndex
+│   │   └── 拒绝请求并更新 reply
+│   │       ├── 设置 success 为 false
+│   │       ├── 设置 term 为当前任期号
+│   │       └── 设置 updatenextindex 为 lastLogIndex + 1
+│   ├── prevLogIndex < lastSnapshotIncludeIndex
+│   │   └── 拒绝请求并更新 reply
+│   │       ├── 设置 success 为 false
+│   │       ├── 设置 term 为当前任期号
+│   │       └── 设置 updatenextindex 为 lastSnapshotIncludeIndex + 1
+│   └── prevLogIndex 和 prevLogTerm 匹配
+│       ├── 逐条检查并更新日志条目（而不是直接截断，然后添加）
+│       │   ├── 新日志条目添加到末尾
+│       │   └── 检查并更新已有日志条目
+│       └── 更新 commitIndex
+│       └── 设置 reply
+│           ├── 设置 success 为 true
+│           └── 设置 term 为当前任期号
+└── 否则
+    └── 向前查找不匹配的日志条目并更新 reply
+        ├── 设置 updatenextindex 为 prevLoIndex
+        ├── 找到不同 term 的第一个日志条目
+		└── 设置 reply
+
+```
+
+#### **sendAppendEntries**
+
+本函数主要作用是向指定的raft节点发送附加日志条目（AppendEntries）请求，并处理该节点的回复reply来判断是否成功完成请求，以进行后续的处理。主要的处理包括后续日志提交（Commit），以及如果请求被拒绝了后寻找匹配的日志条目。
+
+```cpp
+/*
+sendAppendEntries 函数
+主要功能：向指定的raft节点发送附加日志条目（AppendEntries）请求，并处理该节点的回复reply来判断是否成功完成请求
+输入参数：
+    server: raft节点ID，发送请求给该节点。
+    args: 要发送的附加日志条目请求参数。
+    reply: 用于存储raft节点的回复。
+    appendNums: 用于跟踪成功追加日志条目的服务器数量。
+*/
+bool Raft::sendAppendEntries(int server, std::shared_ptr<raftRpcProctoc::AppendEntriesArgs> args,
+                             std::shared_ptr<raftRpcProctoc::AppendEntriesReply> reply,
+                             std::shared_ptr<int> appendNums) {
+  // 调用目标节点的重写的AppendEntries函数接收追加日志请求
+  bool ok = m_peers[server]->AppendEntries(args.get(), reply.get());  // RPC发挥远程调用的作用，注意智能指针要转换为裸指针
+
+  // 检查网络通信
+  //这个ok是网络是否正常通信的ok，而不是requestVote rpc是否投票的rpc
+  // 如果网络不通的话肯定是没有返回的，不用一直重试
+  // todo： paper中5.3节第一段末尾提到，如果append失败应该不断的retries ,直到这个log成功的被store
+  if (!ok) {  // 通信失败
+    DPrintf("[func-Raft::sendAppendEntries-raft{%d}] leader 向节点{%d}发送AE rpc失敗", m_me, server);
+    return ok;
+  }
+
+  // 通信成功
+  DPrintf("[func-Raft::sendAppendEntries-raft{%d}] leader 向节点{%d}发送AE rpc成功", m_me, server);
+  
+  if (reply->appstate() == Disconnected) {  // 通信成功，但是返回状态为Disconnected，但由于各种原因（如服务器重启、网络分区等）,远端 RPC 节点已经断连或不可用
+    return ok;
+  }
+
+  // 节点可用，处理节点返回的回复 
+  std::lock_guard<std::mutex> lg1(m_mtx);   // 加锁，保护共享资源
+  if (reply->term() > m_currentTerm) {  // 对端raft节点的term比当前节点的term更新
+    m_status = Follower;  // 退为Follower
+    m_currentTerm = reply->term();
+    m_votedFor = -1;    // 重置投票记录
+    return ok;
+  } else if (reply->term() < m_currentTerm) { // 对端服务节点的term比当前的小，则这个reply是过期消息，不处理
+    DPrintf("[func -sendAppendEntries  rf{%d}]  节点：{%d}的term{%d}<rf{%d}的term{%d}\n", m_me, server, reply->term(),
+            m_me, m_currentTerm);
+    return ok;
+  }
+
+  // 上述符合，则任期相等，则需要处理reply
+  if (m_status != Leader) {     // 当前节点已经退回了Folloer，则不需要其处理reply
+    return ok;
+  }
+
+  myAssert(reply->term() == m_currentTerm,
+           format("reply.Term{%d} != rf.currentTerm{%d}   ", reply->term(), m_currentTerm));   // 断言检查
+  
+  if (!reply->success()) {
+    // 回复中声明这次请求没有成功，则说明日志条目的index不匹配，正常来说就是index要往前-1来寻找最后一个匹配的日志条目
+    // 第一个日志（idnex = 1）发送后肯定是匹配的，因此不用考虑变成负数
+    if (reply->updatenextindex() != -100) {
+      DPrintf("[func -sendAppendEntries  rf{%d}]  返回的日志term相等, 但是index不匹配, 回缩nextIndex[%d]: {%d}\n", m_me,
+              server, reply->updatenextindex());
+      m_nextIndex[server] = reply->updatenextindex();  // 直接退回到raft节点返回来的日志条目
+    }
+    //	怎么越写越感觉rf.nextIndex数组是冗余的呢，看下论文fig2，其实不是冗余的
+  } else {
+    // 请求成功，日志条目是匹配的，新的日志条目已经添加到了对端raft节点上
+    *appendNums = *appendNums + 1;  // 成功+1
+    DPrintf("---------------------------tmp------------------------- 节点{%d}返回true,当前*appendNums{%d}", server, *appendNums);
+    // 更新这个对端Follower节点的日志条目信息
+    m_matchIndex[server] = std::max(m_matchIndex[server], args->prevlogindex() + args->entries_size()); // Follower中当前匹配的最新日志条目索引号
+    m_nextIndex[server] = m_matchIndex[server] + 1;   // Follower中下一个想要日志条目的索引号
+
+    int lastLogIndex = getLastLogIndex();   // Leader中最新的日志索引
+
+    myAssert(m_nextIndex[server] <= lastLogIndex + 1, // 肯定不能超过最新的，否则是不合理的
+             format("error msg:rf.nextIndex[%d] > lastLogIndex+1, len(rf.logs) = %d   lastLogIndex{%d} = %d", server, m_logs.size(), server, lastLogIndex));
+
+    // 检查是否可以提交日志条目（多数follower节点成功更新）
+    if (*appendNums >= 1 + m_peers.size() / 2) {
+      *appendNums = 0; // 重置
+
+      // leader只有在当前term有日志提交的时候才更新commitIndex，因为raft无法保证之前term的Index是否提交
+      // 只有当前term有日志提交，之前term的log才可以被提交，只有这样才能保证“领导人完备性{当选领导人的节点拥有之前被提交的所有log，当然也可能有一些没有被提交的}”
+      if (args->entries_size() > 0) {
+        DPrintf("args->entries(args->entries_size()-1).logterm(){%d}   m_currentTerm{%d}",
+                args->entries(args->entries_size() - 1).logterm(), m_currentTerm);
+      }
+
+      if (args->entries_size() > 0 && args->entries(args->entries_size() - 1).logterm() == m_currentTerm) {    // 保证存在日志、且存在属于当前term的日志
+        DPrintf(
+            "---------------------------tmp------------------------- 當前term有log成功提交, 更新leader的m_commitIndex "
+            "from{%d} to{%d}",
+            m_commitIndex, args->prevlogindex() + args->entries_size());
+        m_commitIndex = std::max(m_commitIndex, args->prevlogindex() + args->entries_size());    // 更新leader的提交索引m_commitIndex
+      }
+
+      // 检查，提交索引不应该超过最新的日志索引
+      myAssert(m_commitIndex <= lastLogIndex,
+               format("[func-sendAppendEntries,rf{%d}] lastLogIndex:%d  rf.commitIndex:%d\n", m_me, lastLogIndex,
+                      m_commitIndex));
+
+      // 这里只是提交了，具体应用还没有。（后续通过应用定时器）
+
+    }
+  }
+  // 返回消息处理完毕
+  return ok;  
+}
+```
+
+本函数中存在比较复杂的处理逻辑，主要是在收到响应消息后，根据响应消息中的term、log index来进行对应地处理。函数的整体处理逻辑如下所示：
+
+```cpp
+sendAppendEntries
+├── 向目标节点发送附加日志请求
+│   ├── 调用目标节点的 AppendEntries 函数
+│   └── 检查网络通信是否成功
+│       ├── 通信失败
+│       │   └── 返回通信状态 ok
+│       └── 通信成功
+│           ├── 检查节点返回状态
+│           │   ├── 返回状态为 Disconnected
+│           │   │   └── 返回通信状态 ok
+│           │   └── 节点可用，处理节点回复
+│               ├── 加锁保护共享资源
+│               ├── 比较回复中的任期与当前任期
+│               │   ├── 回复任期 > 当前任期
+│               │   │   ├── 设置当前节点为 Follower
+│               │   │   ├── 更新当前任期
+│               │   │   └── 重置投票记录
+│               │   └── 回复任期 <= 当前任期
+│               │       ├── 回复任期 < 当前任期
+│               │       │   └── 忽略过期消息
+│               │       └── 回复任期 == 当前任期
+│               │           ├── 当前节点不是 Leader
+│               │           │   └── 返回通信状态 ok
+│               │           └── 当前节点是 Leader，处理回复
+│               │               ├── 检查日志条目匹配状态
+│               │               │   ├── 日志条目不匹配
+│               │               │   │   └── 回滚 nextIndex
+│               │               │   └── 日志条目匹配
+│               │               │       ├── 增加成功追加日志条目数量
+│               │               │       ├── 更新对端节点日志信息
+│               │               │       ├── 检查是否可以提交日志条目
+│               │               │       │   ├── 多数节点成功更新
+│               │               │       │   │   └── 检查当前任期的日志条目
+│               │               │       │   │       ├── 存在日志且属于当前任期
+│               │               │       │   │       │   ├── 更新 Leader 的提交索引
+│               │               │       │   │       │   └── 检查提交索引合理性
+│               │               │       │   │       └── 提交索引未超过最新日志索引
+│               │               │       │   └── 返回消息处理完毕
+│               │               └── 返回通信状态 ok
+└── 返回通信状态 ok
+
+```
+
+#### **InstallSnapshot**
+
+主要作用：实现了 Raft 协议中的 InstallSnapshot RPC，用于领导者（Leader）向跟随者（Follower）发送安装快照的请求时时，在Follower节点根据快照信息，更新当前节点的状态和日志，同时将快照应用到状态机并持久化。
+
+```cpp
+/*
+InstallSnapshot 函数
+主要功能：处理 Leader 发送的快照数据，更新当前节点的状态和日志，同时将快照应用到状态机并持久化
+输入参数：
+        const raftRpcProctoc::InstallSnapshotRequest* args,   快照安装请求消息
+        raftRpcProctoc::InstallSnapshotResponse* reply        快照安装结果响应消息
+*/
+void Raft::InstallSnapshot(const raftRpcProctoc::InstallSnapshotRequest* args,
+                           raftRpcProctoc::InstallSnapshotResponse* reply) {
+  m_mtx.lock();
+  DEFER { m_mtx.unlock(); };
+
+  // 比较请求消息中的term和当前raft节点的term，如果请求消息中的term更小，则是过期的消息，拒绝快照
+  if (args->term() < m_currentTerm) { 
+    reply->set_term(m_currentTerm);
+    return;
+  }
+
+  // 如果请求消息的term比当前节点的term更大，更新当前节点的 term 并转为 Follower
+  if (args->term() > m_currentTerm) { 
+    // 三变
+    m_currentTerm = args->term();
+    m_votedFor = -1;
+    m_status = Follower;
+    persist();  
+  }
+
+  m_status = Follower;
+  m_lastResetElectionTime = now();  // 重置选举定时器（因为收到了来自leader的快照，不需要重新选举）
+
+  // 比较快照的索引，如果收到的快照的索引小于等于当前节点的最后快照索引，说明是旧快照，忽略
+  if (args->lastsnapshotincludeindex() <= m_lastSnapshotIncludeIndex) {
+    return;
+  }
+
+  // 截断日志
+  // 如果除了要生成快照的，还有更多的日志，则做一个截断，分解点之前的日志条目删除
+  // 如果最大日志索引比快照要小，则直接全部删除，因为有了快照
+  auto lastLogIndex = getLastLogIndex();
+
+  if (lastLogIndex > args->lastsnapshotincludeindex()) {
+    m_logs.erase(m_logs.begin(), m_logs.begin() + getSlicesIndexFromLogIndex(args->lastsnapshotincludeindex()) + 1);   // 删除快照中截止索引之前的
+  } else {
+    m_logs.clear();  // 本节点中所有的日志条目都在快照之前，直接全部删除
+  }
+
+  // 修改commitIndex和lastApplied，生成快照的日志条目一定是已经被应用到状态机里的
+  m_commitIndex = std::max(m_commitIndex, args->lastsnapshotincludeindex());
+  m_lastApplied = std::max(m_lastApplied, args->lastsnapshotincludeindex());
+
+  m_lastSnapshotIncludeIndex = args->lastsnapshotincludeindex();
+  m_lastSnapshotIncludeTerm = args->lastsnapshotincludeterm();
+
+  // 构造响应消息
+  reply->set_term(m_currentTerm);
+  
+  // 构造应用消息，安装快照，将快照应用到本节点上的状态机中
+  ApplyMsg msg;
+  msg.SnapshotValid = true;
+  msg.Snapshot = args->data();
+  msg.SnapshotTerm = args->lastsnapshotincludeterm();
+  msg.SnapshotIndex = args->lastsnapshotincludeindex();
+
+  // 新开一个线程，异步应用快照到 KV 服务器
+  std::thread t(&Raft::pushMsgToKvServer, this, msg);
+  t.detach();
+
+  // 持久化当前状态和快照数据
+  m_persister->Save(persistData(), args->data());
+}
+```
+
+**Follower节点在收到这个请求时，会对其进行处理。处理主要包括以下几个步骤：**
+
+1. 检查Leader节点发送过来的请求消息中所携带的`term`和Follwer节点的`term`大小，来判断是否为过期消息。（**无论什么时候收到rpc请求和响应都要检查term**）
+2. 比较请求消息中快照的最新日志索引`args->lastsnapshotincludeindex()`和当前Follower节点的最新日志索引**，<font color='red'>判断如何处理这次 InstallSnapshot请求（不同index情况决定了是如何处理）</font>**。
+3. 如果是新的快照，需要应用快照到状态机（通过开辟新线程异步应用），同时持久化当前节点的状态和快照数据。
+
+整理这个函数的处理逻辑如下：
+
+```cpp
+InstallSnapshot
+├── 获取互斥锁并设置 DEFER 解锁
+├── 判断请求消息任期号与当前任期号
+│   ├── 请求消息任期号 < 当前任期号
+│   │   └── 拒绝快照
+│   │       └── 设置 reply.term 为当前任期号
+│   └── 请求消息任期号 >= 当前任期号
+│       ├── 请求消息任期号 > 当前任期号
+│       │   ├── 更新当前任期号
+│       │   ├── 设置 votedFor 为 -1
+│       │   ├── 设置状态为 Follower
+│       │   └── 持久化当前状态
+│       ├── 设置状态为 Follower
+│       └── 重置选举定时器
+├── 判断快照索引
+│   ├── 收到的快照索引 <= 当前节点最后快照索引
+│   │   └── 忽略快照
+│   └── 收到的快照索引 > 当前节点最后快照索引
+│       ├── 截断日志
+│       │   ├── 最大日志索引 > 快照索引
+│       │   │   └── 删除快照中截止索引之前的日志
+│       │   └── 最大日志索引 <= 快照索引
+│       │       └── 清空所有日志
+│       ├── 修改 commitIndex 和 lastApplied
+│       │   ├── 更新 commitIndex
+│       │   └── 更新 lastApplied
+│       ├── 更新最后快照索引和任期
+│       │   ├── 更新 lastSnapshotIncludeIndex
+│       │   └── 更新 lastSnapshotIncludeTerm
+│       └── 构造响应消息
+│           ├── 设置 reply.term 为当前任期号
+│           └── 构造应用消息
+│               ├── 设置 SnapshotValid 为 true
+│               ├── 设置 Snapshot 为 args.data
+│               ├── 设置 SnapshotTerm 为 lastsnapshotincludeterm
+│               └── 设置 SnapshotIndex 为 lastsnapshotincludeindex
+├── 异步应用快照到状态机
+│   └── 新开线程调用 pushMsgToKvServer
+└── 持久化当前状态和快照数据
+    └── 调用 m_persister->Save
+```
+
+#### **leaderHearBeatTicker**
+
+此函数是作为一个心跳定时器，循环地触发Leader向Follower发送心跳来维持它的领导地位。实现该函数的基本思路是将其置为一个`while(true)`循环中，这样可以不断地执行来检查。同时，根据发送心跳的时间间隔设置一个睡眠时间，通过让承载这个定时器的线程/协程睡眠一段时间来避免一直在循环。函数的具体代码如下：
+
+```cpp
+/*
+leaderHearBeatTicker 函数
+主要功能：定时器功能，在 Raft 协议的 Leader 节点中用于控制定期向Follower节点发送心跳消息
+*/
+void Raft::leaderHearBeatTicker() {
+  while (true) {
+    //不是leader的话就没有必要进行后续操作，况且还要拿锁，很影响性能，目前是睡眠，后面再优化优化
+    while (m_status != Leader) {
+      usleep(1000 * HeartBeatTimeout);   // 如果不是 Leader，则休眠一段时间（HeartBeatTimeout 毫秒），然后重新检查
+    }
+    static std::atomic<int32_t> atomicCount = 0;    // 统计Leader节点的心跳定时器的执行次数
+
+    std::chrono::duration<signed long int, std::ratio<1, 1000000000>> suitableSleepTime{};   // 记录合适的睡眠时间
+    std::chrono::system_clock::time_point wakeTime{};    // 记录当前时间
+    {  
+      std::lock_guard<std::mutex> lock(m_mtx);   // 加锁
+      wakeTime = now();
+      // 睡眠时间 = 心跳超时时间 HeartBeatTimeout + 最后一次重置心跳时间 m_lastResetHearBeatTime - 当前时间
+      suitableSleepTime = std::chrono::milliseconds(HeartBeatTimeout) + m_lastResetHearBeatTime - wakeTime;   
+    }  // 出了这个域，已自动解锁
+
+    if (std::chrono::duration<double, std::milli>(suitableSleepTime).count() > 1) {  // 适合睡眠时间大于 1 毫秒，则执行睡眠操作
+      std::cout << atomicCount << "\033[1;35m leaderHearBeatTicker();函数设置睡眠时间为: "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(suitableSleepTime).count() << " 毫秒\033[0m"
+                << std::endl;
+      // 获取当前时间点
+      auto start = std::chrono::steady_clock::now();    // 稳态时钟，在测量时间间隔时特别有用，因为它不会受到系统时间调整的影响，确保时间间隔测量的准确性和稳定性
+      usleep(std::chrono::duration_cast<std::chrono::microseconds>(suitableSleepTime).count());     //  钩子函数，让出协程的执行权
+
+      // 获取睡眠结束后的时间点
+      auto end = std::chrono::steady_clock::now();
+
+      // 计算时间差并输出结果（单位为毫秒）
+      std::chrono::duration<double, std::milli> duration = end - start;
+
+      // 使用ANSI控制序列将输出颜色修改为紫色
+      std::cout << atomicCount << "\033[1;35m leaderHearBeatTicker();函数实际睡眠时间为: " << duration.count() << " 毫秒\033[0m" << std::endl;
+      ++atomicCount;
+    }
+
+    // 睡眠结束
+    if (std::chrono::duration<double, std::milli>(m_lastResetHearBeatTime - wakeTime).count() > 0) {
+      // 如果在睡眠的这段时间定时器被重置了，则再次睡眠
+      continue;
+    }
+
+    // 执行心跳
+    doHeartBeat();
+  }
+}
+```
+
+在这里，该函数只适用对于Leader节点（只有Leader才会发心跳），我们首先计算出了应该睡眠的时间`suitableSleepTime`，然后**通过钩子函数`usleep`让此协程让出指定时间执行权**。`usleep`是我们实现的一个钩子函数，这是因为**我们使用协程来管理任务调度**，因此在这里的睡眠不应该调用系统函数来让出线程执行权，而是让出协程执行权，并通过定时器使得在`suitableSleepTime`时间后这个函数还会获得执执行权。
+
+在睡眠结束后，此时Leader应该向**所有其他节点发送心跳消息**`doHeartBeat`。执行完成后又**进入下一次循环睡眠**，以此实现了一个”定时器“的功能，在一定时间间隔不断发送心跳。
+
+#### **doHeartBeat**
+
+本函数为**执行心跳函数或者是日志复制的主要发起函数**。当`leaderHearBeatTicker`定时器触发后，会调用此函数。此函数会对对Follower（除了自己外的所有节点）发送日志消息。首先，此函数会根据所记录的每个Follower的日志索引情况来判断是发送快照还是AE，然后再调用具体的函数（如leaderSendSnapShot或者sendAppendEntries去实际执行）。
+
+```cpp
+/*
+doHeartBeat 函数
+主要功能：Raft协议中Leader节点的心跳发送函数
+*/
+void Raft::doHeartBeat() {
+  std::lock_guard<std::mutex> g(m_mtx);  // 锁定互斥量以确保线程安全
+
+  // 只有leader才需要发送心跳
+  if (m_status == Leader) {
+    DPrintf("[func-Raft::doHeartBeat()-Leader: {%d}] Leader的心跳定时器触发了且拿到mutex, 开始发送AE\n", m_me);
+    auto appendNums = std::make_shared<int>(1);   // 统计正确返回的节点数量
+
+    // 对Follower（除了自己外的所有节点）发送AE
+    // todo 这里肯定是要修改的，最好使用一个单独的goruntime来负责管理发送log，因为后面的log发送涉及优化之类的
+    // 最少要单独写一个函数来管理，而不是在这一坨
+    for (int i = 0; i < m_peers.size(); i++) {
+      if (i == m_me) {
+        continue;
+      }
+      DPrintf("[func-Raft::doHeartBeat()-Leader: {%d}] Leader的心跳定时器触发了 index:{%d}\n", m_me, i);
+      myAssert(m_nextIndex[i] >= 1, format("rf.nextIndex[%d] = {%d}", i, m_nextIndex[i]));  // 确保发送给Follower的日志索引在正常范围
+
+      // 判断是发送AE（AppendEntries）还是快照
+      if (m_nextIndex[i] <= m_lastSnapshotIncludeIndex) { // 需要发送的日志条目已经删除了，因为形成了快照，所要发送快照
+        std::thread t(&Raft::leaderSendSnapShot, this, i);   // 创建新线程执行发送快照函数
+        t.detach();
+        continue;
+      }
+
+      // 发送AE
+      int preLogIndex = -1;
+      int preLogTerm = -1;
+      getPrevLogInfo(i, &preLogIndex, &preLogTerm); // 获取需要向第i个Follower发送的日志条目的上一个日志条目的索引和任期
+ 
+      // 构造AE请求参数 AppendEntriesArgs
+      std::shared_ptr<raftRpcProctoc::AppendEntriesArgs> appendEntriesArgs = std::make_shared<raftRpcProctoc::AppendEntriesArgs>(); 
+      appendEntriesArgs->set_term(m_currentTerm);
+      appendEntriesArgs->set_leaderid(m_me);
+      appendEntriesArgs->set_prevlogindex(preLogIndex);
+      appendEntriesArgs->set_prevlogterm(preLogTerm);
+      appendEntriesArgs->clear_entries();
+      appendEntriesArgs->set_leadercommit(m_commitIndex);
+
+      // 添加日志条目
+      if (preLogIndex != m_lastSnapshotIncludeIndex) {  
+        // 前一个日志条目在快照之外，应该从该索引之后开始发送日志条目
+        for (int j = getSlicesIndexFromLogIndex(preLogIndex) + 1; j < m_logs.size(); ++j) {
+          raftRpcProctoc::LogEntry* sendEntryPtr = appendEntriesArgs->add_entries();  // 返回一个指向新添加的日志条目的指针
+          *sendEntryPtr = m_logs[j];  // 将该指针指向日志条目，则完成这个条目的添加    
+        }
+      } else {  // 即 preLogIndex == m_lastSnapshotIncludeIndex
+        // 前一个日志条目正好是快照的分界点，那可以把Leader的所以日志条目都加入
+        for (const auto& item: m_logs) {
+          raftRpcProctoc::LogEntry* sendEntryPtr = appendEntriesArgs->add_entries();
+          *sendEntryPtr = item; // =是可以点进去的，可以点进去看下protobuf如何重写这个赋值运算符的，实现直接将一个 protobuf 消息对象赋值给另一个消息对象
+        }
+      }
+
+      // 检查：leader对每个节点发送的日志长短不一（每个follower的情况不同），但是都保证从prevIndex发送直到最后
+      int lastLogIndex = getLastLogIndex();
+      myAssert(appendEntriesArgs->prevlogindex() + appendEntriesArgs->entries_size() == lastLogIndex, format("appendEntriesArgs.PrevLogIndex{%d}+len(appendEntriesArgs.Entries){%d} != lastLogIndex{%d}", appendEntriesArgs->prevlogindex(), appendEntriesArgs->entries_size(), lastLogIndex));
+
+      // 构造 AppendEntries 响应参数
+      const std::shared_ptr<raftRpcProctoc::AppendEntriesReply> appendEntriesReply = std::make_shared<raftRpcProctoc::AppendEntriesReply>();
+      appendEntriesReply->set_appstate(Disconnected);
+
+      // 创建新线程，利用sendAppendEntries函数在新线程中接收并处理AppendEntries请求
+      std::thread t(&Raft::sendAppendEntries, this, i, appendEntriesArgs, appendEntriesReply, appendNums);
+      t.detach();
+    }
+    m_lastResetHearBeatTime = now();   // 更新上一次心跳时间
+  }
+}
+```
+
+由于一般会有多个Follower节点要发送，所以每个发送函数都是异步执行的（开辟一个新线程）。本函数的主要操作逻辑：
+
+```cpp
+doHeartBeat
+├── 锁定互斥量，确保线程安全
+├── 检查当前节点状态
+│   └── 如果是 Leader
+│       ├── 记录心跳触发日志
+│       ├── 初始化成功返回的节点数量计数器
+│       └── 向所有 Follower 发送 AppendEntries（AE）请求
+│           ├── 遍历所有节点
+│           │   ├── 跳过自身节点
+│           │   └── 处理每个 Follower
+│           │       ├── 确保日志索引正常
+│           │       ├── 判断发送 AE 或快照
+│           │       │   ├── 如果需要发送快照
+│           │       │   │   ├── 创建新线程执行发送快照函数
+│           │       │   │   └── 跳过当前循环
+│           │       │   └── 如果发送 AE
+│           │       │       ├── 获取上一个日志条目索引和任期
+│           │       │       ├── 构造 AE 请求参数
+│           │       │       │   ├── 设置请求参数的基础信息
+│           │       │       │   ├── 清空 entries 字段
+│           │       │       │   ├── 设置 leaderCommit 索引
+│           │       │       │   ├── 添加日志条目
+│           │       │       │   │   ├── 前一个日志条目在快照之外
+│           │       │       │   │   │   └── 从该索引之后开始发送日志条目
+│           │       │       │   │   └── 前一个日志条目正好是快照的分界点
+│           │       │       │   │       └── 将所有日志条目都加入
+│           │       │       │   ├── 检查 AE 请求的完整性
+│           │       │       │   └── 记录心跳触发日志
+│           │       │       ├── 构造 AE 响应参数
+│           │       │       ├── 创建新线程执行 sendAppendEntries 函数
+│           │       │       └── 跳过当前循环
+│           └── 更新上一次心跳时间
+```
+
+#### **总结**
+
+在日志复制和心跳这个模块中，核心内容包括：
+
+- 整体的流程图，日志同步的过程是怎么实现的，每个函数的作用，它们之间的关系。
+- 消息分为两种：AE和快照，一个是添加日志，一个是把状态机内容压缩成一个快照（则可以把快照之前的所有日志全部删除），只需要传递这个快照
+- ==**最核心的内容：**每次请求和响应都需要判断`term`和`log index`，来判断消息是否过期，日志是否匹配，如何回退寻找匹配日志条目等==
+
+### 6.4 持久化
+
+Raft算法定期将一些数据持久化到磁盘中，以实现在服务器重启时利用持久化存储的数据恢复节点上一个工作时刻的状态。在这里，**我们的实现方案是将raft节点的状态信息序列化为字符串，然后将字符串写入文件中**。在这个过程中，主要依赖于**`boost`序列化库，**通过该库中所提供的序列化和反序列化函数，来实现将状态信息转化为字符串，或者从字符串中解析出raft节点信息。
+
+利用`boost`序列化库将当前 Raft 节点的状态序列化为字符串或从持久化字符串数据中恢复 Raft 节点的状态：
+
+```cpp
+/*
+persistData 函数
+主要作用：利用 Boost 序列化库将当前 Raft 节点的状态序列化为字符串
+*/
+std::string Raft::persistData() {
+  // 创建一个用于持久化的结构体对象
+  BoostPersistRaftNode boostPersistRaftNode;
+
+  // 将当前 Raft 节点的状态保存到该对象中
+  boostPersistRaftNode.m_currentTerm = m_currentTerm;  // 当前任期
+  boostPersistRaftNode.m_votedFor = m_votedFor;        // 投票给的候选人
+  boostPersistRaftNode.m_lastSnapshotIncludeIndex = m_lastSnapshotIncludeIndex;  // 上次快照包含的日志索引
+  boostPersistRaftNode.m_lastSnapshotIncludeTerm = m_lastSnapshotIncludeTerm;    // 上次快照包含的任期
+
+  // 将日志条目序列化并保存到对象中
+  for (auto& item : m_logs) {
+    boostPersistRaftNode.m_logs.push_back(item.SerializeAsString());
+  }
+
+  // 使用 stringstream 和 Boost 序列化库将对象序列化为字符串
+  std::stringstream ss;
+  boost::archive::text_oarchive oa(ss);
+  oa << boostPersistRaftNode;
+
+  // 返回序列化后的字符串
+  return ss.str();
+}
+
+
+/*
+readPersist 函数
+主要功能：基于boost序列化库，从持久化字符串数据中恢复 Raft 节点的状态
+*/
+void Raft::readPersist(std::string data) {
+  if (data.empty()) {
+    return;
+  }
+  // 初始化数据流
+  std::stringstream iss(data);
+
+  // Boost 序列化对象创建
+  boost::archive::text_iarchive ia(iss);
+
+  BoostPersistRaftNode boostPersistRaftNode;  // 创建一个 BoostPersistRaftNode 对象 boostPersistRaftNode，用于存储从 ia 中反序列化得到的数据。
+  ia >> boostPersistRaftNode;   // 将输入流 ia 中的数据反序列化到 boostPersistRaftNode 对象中。
+
+  // 恢复节点状态
+  m_currentTerm = boostPersistRaftNode.m_currentTerm;
+  m_votedFor = boostPersistRaftNode.m_votedFor;
+  m_lastSnapshotIncludeIndex = boostPersistRaftNode.m_lastSnapshotIncludeIndex;
+  m_lastSnapshotIncludeTerm = boostPersistRaftNode.m_lastSnapshotIncludeTerm;
+
+  // 恢复日志列表
+  m_logs.clear();
+  for (auto& item : boostPersistRaftNode.m_logs) {
+    raftRpcProctoc::LogEntry logEntry;
+    logEntry.ParseFromString(item);   // item被序列化成了字符串，再解析回来
+    m_logs.emplace_back(logEntry);
+  }
+}
+```
+
+将字符串写入文件主要依赖于文件输入输出流`fstream`，我们封装了一个`Persister`类，其中基于`fstream`实现了维护文件输入输出流、将字符串写入到文件等函数，以实现持久化。
 
 
 
@@ -628,3 +1237,6 @@ void Raft::AppendEntries1(const raftRpcProctoc::AppendEntriesArgs* args, raftRpc
 [MIT6.5840(6.824) Lec06笔记: raft论文解读2: 恢复、持久化和快照 (gfx9.github.io)](https://gfx9.github.io/2024/01/12/MIT6.5840/Lec06笔记/)
 
 [分布式一致性算法-Raft_分布式一致性算法raft-CSDN博客](https://blog.csdn.net/kiranet/article/details/121130250?spm=1001.2101.3001.6661.1&utm_medium=distribute.pc_relevant_t0.none-task-blog-2~default~BlogOpenSearchComplete~Rate-1-121130250-blog-140291635.235^v43^pc_blog_bottom_relevance_base5&depth_1-utm_source=distribute.pc_relevant_t0.none-task-blog-2~default~BlogOpenSearchComplete~Rate-1-121130250-blog-140291635.235^v43^pc_blog_bottom_relevance_base5&utm_relevant_index=1)
+
+**代码参考来源**：[youngyangyang04/KVstorageBaseRaft-cpp: 【代码随想录知识星球】项目分享-基于Raft的k-v存储数据库🔥 (github.com)](https://github.com/youngyangyang04/KVstorageBaseRaft-cpp)
+
