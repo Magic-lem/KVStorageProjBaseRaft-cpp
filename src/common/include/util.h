@@ -62,6 +62,7 @@ public:
     auto timeout_time = now + std::chrono::milliseconds(timeout);   // 计算超时时间
 
     while (m_queue.empty()) {   
+      // m_condvariable.wait_until会在等待期间让出锁陷入阻塞，直到收到锁的通知或这超时
       if (m_condvariable.wait_until(lock, timeout_time) == std::cv_status::timeout) { // 如果队列为空，且以及超时了，则返回失败
         return false;
       } else {    // 否则不断循环，直到队列不为空或超时

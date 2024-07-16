@@ -790,7 +790,7 @@ void Raft::applierTicker() {
 
     // 检查并处理应用日志条目
     if (!applyMsgs.empty()) {
-      DPrintf("[func- Raft::applierTicker()-raft{%d}] 向kvserver報告的applyMsgs長度爲：{%d}", m_me, applyMsgs.size());
+      DPrintf("[func- Raft::applierTicker()-raft{%d}] 向kvserver报告的applyMsgs长度为：{%d}", m_me, applyMsgs.size());
     }
 
     // 循环将所有应用消息应用到状态机上
@@ -1246,5 +1246,10 @@ bool Raft::matchLog(int logIndex, int logTerm) {
   return logTerm == getLogTermFromLogIndex(logIndex);
 }
 
-
-
+/*
+CondInstallSnapshot 函数
+主要功能：对状态机中传过来的快照信息进行检查并处理（删除分界点之前的日志条目）
+*/
+bool Raft::CondInstallSnapshot(int lastIncludedTerm, int lastIncludedIndex, std::string snapshot) { 
+  return true;
+}

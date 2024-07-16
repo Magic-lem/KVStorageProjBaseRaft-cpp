@@ -15,6 +15,8 @@ const int ApplyInterval = 10 * debugMul;     // 将消息应用到状态机上�
 const int minRandomizedElectionTime = 300 * debugMul;  // ms
 const int maxRandomizedElectionTime = 500 * debugMul;  // ms
 
+const int CONSENSUS_TIMEOUT = 500 * debugMul;  // ms。命令提交等待超时时间
+
 // 协程相关设置
 const int FIBER_THREAD_NUM = 1;     // 线程池大小
 const bool FIBER_USE_CALLER_THREAD = false; // 是否use_caller模式

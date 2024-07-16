@@ -114,7 +114,7 @@ private:
 
   std::unordered_map<std::sring, int> m_lastRequestId;    // 记录每个客户端的最后请求 ID，一个kV服务器可能连接多个client
 
-  int m_lastSnapshotIncludeIndex;    // 最后一个快照的 日志条目索引
+  int m_lastSnapShotRaftLogIndex;    // 最后一个快照的日志条目索引
 };
 
 #endif
