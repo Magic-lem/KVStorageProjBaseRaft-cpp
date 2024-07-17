@@ -334,3 +334,113 @@ bool KvServer::SendMessageToWaitChan(const Op &op, int raftIndex) {
   return true;
 }
 
+/*
+IfNeedToSendSnapShotCommand 函数
+主要功能：检查是否需要制作快照，需要的话就向raft发送命令
+*/
+void KvServer::IfNeedToSendSnapShotCommand(int raftIndex, int proportion) {
+  if (m_raftNode->GetRaftStateSize() > m_maxRaftState / 10.0) {   // raft节点的状态大小超过了阈值，需要制作快照
+    auto snapshot = MakeSnapShot();   // 制作快照
+    m_raftNode->Snapshot(raftIndex, snapshot);     // 让raft节点根据快照信息更新节点的日志条目
+  }
+}
+
+/*
+MakeSnapShot 函数
+主要功能：将当前的跳表数据制作为快照（字符串）并返回
+*/
+std::string KvServer::MakeSnapShot() {
+  std::lock_guard<std::mutex> lg(m_mtx);
+  std::string snapshotData = getSnapshotData();
+  return snapshotData;
+}
+
+/*-------------------------------------重写的RPC方法------------------------------------------*/
+void KvServer::PutAppend(google::protobuf::RpcController *controller, const ::raftKVRpcProctoc::PutAppendArgs *request,
+                         ::raftKVRpcProctoc::PutAppendReply *response, ::google::protobuf::Closure *done) {
+  KvServer::PutAppend(request, response);   // 直接调用，类函数中对应的方法
+  done->Run();  // 执行回调函数
+}
+
+void KvServer::Get(google::protobuf::RpcController *controller, const ::raftKVRpcProctoc::GetArgs *request,
+                   ::raftKVRpcProctoc::GetReply *response, ::google::protobuf::Closure *done) {
+  KvServer::Get(request, response);
+  done->Run();
+}
+
+
+/*----------------------------------构造函数----------------------------------------------------*/
+KvServer::KvServer(int me, int maxraftstate, std::string nodeInforFileName, short port):
+                  m_skipList(6) {   // 初始化跳表，最高层级是6
+  
+  // 1. 初始化成员变量
+  std::shared_ptr<Persister> persister = std::make_shared<Persister>(me);   // 初始化持久化对象
+  // raft节点ID和节点存储最大值
+  m_me = me;
+  m_maxRaftState = maxraftstate;
+  applyChan = std::make_shared<LockQueue<ApplyMsg>>();    // 初始化用于kvserver与raft节点通信的消息队列
+  m_raftNode = std::make_shared<Raft>();    // 本kvserver所对应的raft节点
+
+
+  // 2. 启动RPC服务
+  std::thread t([this, port]() -> void {    // 通过一个新线程启动RPC服务，该线程专门负责事件的监听
+    RpcProvider provider;   
+    provider.NotifyService(this);   // 注册kvserver的RPC服务
+    provider.NotifyService(this->m_raftNode.get());   // 注册所对应的raft节点的RPC服务
+    provider.Run(m_me, port); // 开始提供服务，等待远程RPC调用请求
+  });
+  t.detach();  
+
+  // 3. 等待所有raft节点启动
+  std::cout << "raftServer node:" << m_me << " start to sleep to wait all ohter raftnode start!!!!" << std::endl;
+  sleep(6); // 开启rpc远程调用能力，需要注意必须要保证所有节点都开启rpc接受功能之后才能开启rpc远程调用能力，这里使用睡眠来保证
+  std::cout << "raftServer node:" << m_me << " wake up!!!! start to connect other raftnode" << std::endl;
+
+  // 4. 加载所有raft节点的IP和端口信息
+  MprpcConfig config;   
+  config.LoadConfigFile(nodeInforFileName.c_str());
+  std::vector<std::pair<std::string, short>> ipPortVt;
+  for (int i = 0; i < INT_MAX - 1; ++i) {  // 循环读取配置文件中的节点IP和端口信息，直到读取不到新的节点为止，存储在ipPortVt向量中
+    std::string node = "node" + std::to_string(i);
+
+    std::string nodeIp = config.Load(node + "ip");
+    std::string nodePortStr = config.Load(node + "port");
+    if (nodeIp.empty()) {
+      break;
+    }
+    ipPortVt.emplace_back(nodeIp, atoi(nodePortStr.c_str()));
+  }
+
+  // 5. 连接其他Raft节点
+  std::vector<std::shared_ptr<RaftRpcUtil>> servers;    // 存储此raft节点与其他raft节点的通信对象
+  for (int i = 0; i < ipPortVt.size(); ++i) {
+    if (i == m_me) {  // 跳过自己
+      servers.push_back(nullptr);
+      continue;
+    }
+    std::string otherNodeIp = ipPortVt[i].first;
+    short otherNodePort = ipPortVt[i].second;
+    auto *rpc = new RaftRpcUtil(otherNodeIp, otherNodePort);    // 与目标raft节点建立连接
+    servers.push_back(std::shared_ptr<RaftRpcUtil>(rpc));   // 存储到数组中
+
+    std::cout << "node" << m_me << " 连接node" << i << "success!" << std::endl;
+  }
+  sleep(ipPortVt.size() - me);    // 等待所有节点之间的连接成功
+
+  // 6. 初始化raft节点
+  m_raftNode->init(servers, m_me, persister, applyChan);
+
+  // 7. 检查是否存在快照进行恢复
+  m_skipList;
+  waitApplyCh;
+  m_lastRequestId;
+  m_lastSnapShotRaftLogIndex = 0;
+  auto snapshot = persister->ReadSnapshot();
+  if (!snapshot.empty()) {    // 快照不为空
+    ReadSnapShotToInstall(snapshot);
+  }
+
+  // 8. 启动应用命令线程，持续运行处理Raft应用命令
+  std::thread t2(&KvServer::ReadRaftApplyCommandLoop, this);
+  t2.join();    // 通过 t2.join() 达到阻塞效果，确保 ReadRaftApplyCommandLoop 线程一直运行，不会被主线程提前结束
+}
