@@ -50,7 +50,7 @@ Node<K, V>::Node(const K k, const V v, int level) {   // 构造函数
 
   // 指针数组Node<K, V> *[level + 1]
   this->forward = new Node<K, V> *[level + 1];    // 为什么数组的尺寸是level + 1？  因为在第level层，则从level到0层都存在该节点，所以该节点可以指向level + 1个节点
-  memset(this->forward, 0, sizeof(Node<K, B> *) * (level + 1));   // 所有字节填充为0
+  memset(this->forward, 0, sizeof(Node<K, V> *) * (level + 1));   // 所有字节填充为0
 };
 
 template <typename K, typename V>
@@ -140,7 +140,7 @@ public:
 
 private: 
   // 从字符串中解析键值对
-  void get_key_value_from_string(const std::string &str, std::string *key, std::sring *value);
+  void get_key_value_from_string(const std::string &str, std::string *key, std::string *value);
   // 判断字符串是否有效
   bool is_valid_string(const std::string &str);
 
@@ -207,7 +207,7 @@ int SkipList<K, V>::insert_element(const K key, const V value) {
 
   // 3. 检查是否存在相同的key
   if (current != NULL && current->get_key() == key) {   // 如果存在相同的key，一定是相等的这一个
-    std::Cout << "key: " << key << ", exists" << std::endl;
+    std::cout << "key: " << key << ", exists" << std::endl;
     _mtx.unlock();
     return 1;   // 键已存在，插入失败，返回 1
   }
@@ -230,7 +230,7 @@ int SkipList<K, V>::insert_element(const K key, const V value) {
       inserted_node->forward[i] = update[i]->forward[i];
       update[i]->forward[i] = inserted_node;
     }
-    std::cout << "Successfullt inserted key: " << key << ", value: " value << std::endl;
+    std::cout << "Successfullt inserted key: " << key << ", value: " << value << std::endl;
     _element_count++;
   }
 
@@ -288,7 +288,7 @@ load_file 函数
 主要功能：从字符串加载跳表数据
 */
 template <typename K, typename V>
-void SkipList<K, V>::load_file(const std::String &dumpStr) {
+void SkipList<K, V>::load_file(const std::string &dumpStr) {
   if (dumpStr.empty()) {
     return;
   }
@@ -320,8 +320,8 @@ int SkipList<K, V>::size() {
 get_key_value_from_string 函数
 主要功能：从字符串中解析键值对
 */
-template<typename K, typename V>
-void SkipList<K, V>::get_key_value_from_string(const std::string &str, str::string *key, std::string *value) {
+template<typename K, typename V> 
+void SkipList<K, V>::get_key_value_from_string(const std::string &str, std::string *key, std::string *value) {
   if (!is_valid_string(str)) {    // 字符串不合法
     return;
   }
@@ -430,7 +430,7 @@ bool SkipList<K, V>::search_element(K key, V &value) {
 
   // 从最高层级开始向下寻找
   for (int i = _skip_list_level; i >= 0; i--) {
-    while (current->forward[i] != NULL && current->forward[i].get_key() < key) {
+    while (current->forward[i] != NULL && current->forward[i]->get_key() < key) {
       current = current->forward[i];
     }
   }
@@ -455,7 +455,7 @@ bool SkipList<K, V>::search_element(K key, V &value) {
 */
 template <typename K, typename V>
 SkipList<K, V>::SkipList(int max_level) {
-  this->max_level = max_level;
+  this->_max_level = max_level;
   this->_skip_list_level = 0;
   this->_element_count = 0;
 
@@ -509,7 +509,7 @@ int SkipList<K, V>::get_random_level() {
     k++;
   }
   k = (k < _max_level) ? k : _max_level;
-  return l;
+  return k;
 };
 
 #endif

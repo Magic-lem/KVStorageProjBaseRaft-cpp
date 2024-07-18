@@ -3,7 +3,7 @@
 // created by magic_pri on 2024-6-30
 //
 
-#include "./include/iomanager.hpp"
+#include "iomanager.hpp"
 
 
 namespace monsoon {
@@ -345,7 +345,7 @@ void IOManager::idle() {
     // 检查是否可以停止，并获取最近一个定时器超时时间
     uint64_t next_timeout = 0;
     if (stopping(next_timeout)) { 
-      std::cout << "name = " <<  GetName() << "idle stopping exit" << std::endl;  // 调度器停止，退出循环
+      std::cout << "name = " <<  getName() << "idle stopping exit" << std::endl;  // 调度器停止，退出循环
       break;
     }
 

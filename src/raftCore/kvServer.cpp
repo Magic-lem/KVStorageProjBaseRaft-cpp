@@ -5,7 +5,7 @@
 
 #include "kvServer.h"
 #include "config.h"
-#include "../common/include/util.h"
+#include "util.h"
 
 /*
 DprintfKVDB 函数
@@ -114,7 +114,7 @@ void KvServer::Get(const raftKVRpcProctoc::GetArgs *args, raftKVRpcProctoc::GetR
     bool isLeader = false;
     m_raftNode->GetState(&_, &isLeader);      
     // 检查请求是否重复以及当前节点是否仍为领导者
-    if (ifRequestDuplicate(op.ClientId, op.RequestID) && isLeader) {    
+    if (ifRequestDuplicate(op.ClientId, op.RequestId) && isLeader) {    
       // 如果是重复的请求且节点是Leader，虽然超时了，raft集群不保证已经commitIndex该日志
       // 但是如果是已经提交过的get请求，是可以再执行的。不会违反线性一致性
       std::string value;
@@ -174,7 +174,7 @@ void KvServer::GetCommandFromRaft(ApplyMsg message) {
   }
 
   // 3. 去重和执行命令
-  if (!ifRequestDuplicate(op.ClientId, op.RequestID)) {   
+  if (!ifRequestDuplicate(op.ClientId, op.RequestId)) {   
     // put和append都不需要重复执行，如果重复了就不执行了
     if (op.Operation == "Put") {
       ExecutePutOpOnKVDB(op);
@@ -204,7 +204,7 @@ bool KvServer::ifRequestDuplicate(std::string ClientId, int RequestId) {
     return false;
   }
 
-  return RequestID <= m_lastRequestId[ClientId];    // 与所记录的该客户端最后的请求序号比较
+  return RequestId <= m_lastRequestId[ClientId];    // 与所记录的该客户端最后的请求序号比较
 }
 
 /*
@@ -246,7 +246,7 @@ void KvServer::PutAppend(const raftKVRpcProctoc::PutAppendArgs *args, raftKVRpcP
   Op raftCommitOp;
   if (!chForRaftIndex->timeOutPop(CONSENSUS_TIMEOUT, &raftCommitOp)) {
     // 超时了，先判断请求是否是重复的
-    if (ifRequestDuplicate(op.ClientId, op.RequestID)) {
+    if (ifRequestDuplicate(op.ClientId, op.RequestId)) {
       // 是重复的，不需要再操作，超时了也没事
       reply->set_err(OK);
     } else {
@@ -255,10 +255,23 @@ void KvServer::PutAppend(const raftKVRpcProctoc::PutAppendArgs *args, raftKVRpcP
   } else {
     // 没超时，则说明leader节点已经提交命令了
     // 注意这里和Get方法的区别，put和append应用并不是在这里执行的，而是由后面的事件循环具体处理（实现异步）
-    reply->set_err(OK);
-  } else {
-    reply->set_err(ErrWrongLeader);
+    DPrintf(
+    "[func -KvServer::PutAppend -kvserver{%d}]WaitChanGetRaftApplyMessage<--Server %d , get Command <-- Index:%d , "
+    "ClientId %s, RequestId %d, Opreation %s, Key :%s, Value :%s",
+    m_me, m_me, raftIndex, &op.ClientId, op.RequestId, &op.Operation, &op.Key, &op.Value);
+    if (raftCommitOp.ClientId == op.ClientId && raftCommitOp.RequestId == op.RequestId) {
+      reply->set_err(OK);
+    } else {
+      reply->set_err(ErrWrongLeader);
+    }
   }
+
+  m_mtx.lock();
+
+  auto tmp = waitApplyCh[raftIndex];
+  waitApplyCh.erase(raftIndex);
+  delete tmp;
+  m_mtx.unlock();
 }
 
 /*
@@ -378,7 +391,7 @@ KvServer::KvServer(int me, int maxraftstate, std::string nodeInforFileName, shor
   // raft节点ID和节点存储最大值
   m_me = me;
   m_maxRaftState = maxraftstate;
-  applyChan = std::make_shared<LockQueue<ApplyMsg>>();    // 初始化用于kvserver与raft节点通信的消息队列
+  applyChan = std::make_shared<LockQueue<ApplyMsg> >();    // 初始化用于kvserver与raft节点通信的消息队列
   m_raftNode = std::make_shared<Raft>();    // 本kvserver所对应的raft节点
 
 

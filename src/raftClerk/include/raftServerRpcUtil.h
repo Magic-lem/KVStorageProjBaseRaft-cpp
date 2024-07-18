@@ -6,6 +6,11 @@
 #ifndef RAFTSERVERRPC_H
 #define RAFTSERVERRPC_H
 
+#include <iostream>
+#include "kvServerRPC.pb.h"
+#include "mprpcchannel.h"
+#include "mprpccontroller.h"
+#include "rpcprovider.h"
 
 /// @brief 维护客户端对kv server的rpc通信
 // raftRpcUtil封装了各个raft节点之间的rpc通信

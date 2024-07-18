@@ -41,7 +41,7 @@ template <class T>
 struct ScopedLocalImpl{
 public:
     // 构造函数
-    ScopedLocalImpl(T &mutex): m_(mutex) {
+    ScopedLocalImpl(T &mutex): mutex_(mutex) {
         mutex_.lock();
         isLocked_ = true;
     }
@@ -112,7 +112,7 @@ WriteScopedLockImpl：局部写锁类模板
 template<class T>
 struct WriteScopedLockImpl {
 public:
-    WriteScopedLockImpl(T &mutex): m_(mutex) {
+    WriteScopedLockImpl(T &mutex): mutex_(mutex) {
         mutex_.wrlock();
         isLocked_ = true;
     } 

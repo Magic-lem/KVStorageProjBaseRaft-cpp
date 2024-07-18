@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package RPC;  //所在的命名空间
+package fixbug;  //所在的命名空间
 
 option cc_generic_services = true;  //开启桩stub服务
 

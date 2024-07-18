@@ -3,7 +3,7 @@
 // created by magic_pri on 2024-7-5
 //
 
-#include "./include/mprpcconfig.h"
+#include "mprpcconfig.h"
 #include <iostream>
 
 /*
@@ -50,9 +50,8 @@ void MprpcConfig::LoadConfigFile(const char *config_file) {
 
     // 将配置项插入到哈希表
     m_configMap.insert({key, value});
-
-    fclose(pf);   // 关闭文件，释放资源
   }
+  fclose(pf);   // 关闭文件，释放资源
 }
 
 /*

@@ -14,7 +14,7 @@
 #include <google/protobuf/wire_format.h>
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
-namespace raftKVRpcProtoc {
+namespace raftKVRpcProctoc {
 class GetArgsDefaultTypeInternal {
  public:
   ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<GetArgs> _instance;
@@ -31,16 +31,16 @@ class PutAppendReplyDefaultTypeInternal {
  public:
   ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<PutAppendReply> _instance;
 } _PutAppendReply_default_instance_;
-}  // namespace raftKVRpcProtoc
+}  // namespace raftKVRpcProctoc
 static void InitDefaultsscc_info_GetArgs_kvServerRPC_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   {
-    void* ptr = &::raftKVRpcProtoc::_GetArgs_default_instance_;
-    new (ptr) ::raftKVRpcProtoc::GetArgs();
+    void* ptr = &::raftKVRpcProctoc::_GetArgs_default_instance_;
+    new (ptr) ::raftKVRpcProctoc::GetArgs();
     ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
   }
-  ::raftKVRpcProtoc::GetArgs::InitAsDefaultInstance();
+  ::raftKVRpcProctoc::GetArgs::InitAsDefaultInstance();
 }
 
 ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_GetArgs_kvServerRPC_2eproto =
@@ -50,11 +50,11 @@ static void InitDefaultsscc_info_GetReply_kvServerRPC_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   {
-    void* ptr = &::raftKVRpcProtoc::_GetReply_default_instance_;
-    new (ptr) ::raftKVRpcProtoc::GetReply();
+    void* ptr = &::raftKVRpcProctoc::_GetReply_default_instance_;
+    new (ptr) ::raftKVRpcProctoc::GetReply();
     ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
   }
-  ::raftKVRpcProtoc::GetReply::InitAsDefaultInstance();
+  ::raftKVRpcProctoc::GetReply::InitAsDefaultInstance();
 }
 
 ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_GetReply_kvServerRPC_2eproto =
@@ -64,11 +64,11 @@ static void InitDefaultsscc_info_PutAppendArgs_kvServerRPC_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   {
-    void* ptr = &::raftKVRpcProtoc::_PutAppendArgs_default_instance_;
-    new (ptr) ::raftKVRpcProtoc::PutAppendArgs();
+    void* ptr = &::raftKVRpcProctoc::_PutAppendArgs_default_instance_;
+    new (ptr) ::raftKVRpcProctoc::PutAppendArgs();
     ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
   }
-  ::raftKVRpcProtoc::PutAppendArgs::InitAsDefaultInstance();
+  ::raftKVRpcProctoc::PutAppendArgs::InitAsDefaultInstance();
 }
 
 ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_PutAppendArgs_kvServerRPC_2eproto =
@@ -78,11 +78,11 @@ static void InitDefaultsscc_info_PutAppendReply_kvServerRPC_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   {
-    void* ptr = &::raftKVRpcProtoc::_PutAppendReply_default_instance_;
-    new (ptr) ::raftKVRpcProtoc::PutAppendReply();
+    void* ptr = &::raftKVRpcProctoc::_PutAppendReply_default_instance_;
+    new (ptr) ::raftKVRpcProctoc::PutAppendReply();
     ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
   }
-  ::raftKVRpcProtoc::PutAppendReply::InitAsDefaultInstance();
+  ::raftKVRpcProctoc::PutAppendReply::InitAsDefaultInstance();
 }
 
 ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_PutAppendReply_kvServerRPC_2eproto =
@@ -94,63 +94,63 @@ static const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* file_level_service_desc
 
 const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_kvServerRPC_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::GetArgs, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::GetArgs, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::GetArgs, key_),
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::GetArgs, clientid_),
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::GetArgs, requestid_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::GetArgs, key_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::GetArgs, clientid_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::GetArgs, requestid_),
   ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::GetReply, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::GetReply, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::GetReply, err_),
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::GetReply, value_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::GetReply, err_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::GetReply, value_),
   ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::PutAppendArgs, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::PutAppendArgs, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::PutAppendArgs, key_),
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::PutAppendArgs, vlue_),
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::PutAppendArgs, op_),
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::PutAppendArgs, clientid_),
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::PutAppendArgs, requestid_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::PutAppendArgs, key_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::PutAppendArgs, value_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::PutAppendArgs, op_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::PutAppendArgs, clientid_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::PutAppendArgs, requestid_),
   ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::PutAppendReply, _internal_metadata_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::PutAppendReply, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  PROTOBUF_FIELD_OFFSET(::raftKVRpcProtoc::PutAppendReply, err_),
+  PROTOBUF_FIELD_OFFSET(::raftKVRpcProctoc::PutAppendReply, err_),
 };
 static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  { 0, -1, sizeof(::raftKVRpcProtoc::GetArgs)},
-  { 8, -1, sizeof(::raftKVRpcProtoc::GetReply)},
-  { 15, -1, sizeof(::raftKVRpcProtoc::PutAppendArgs)},
-  { 25, -1, sizeof(::raftKVRpcProtoc::PutAppendReply)},
+  { 0, -1, sizeof(::raftKVRpcProctoc::GetArgs)},
+  { 8, -1, sizeof(::raftKVRpcProctoc::GetReply)},
+  { 15, -1, sizeof(::raftKVRpcProctoc::PutAppendArgs)},
+  { 25, -1, sizeof(::raftKVRpcProctoc::PutAppendReply)},
 };
 
 static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
-  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::raftKVRpcProtoc::_GetArgs_default_instance_),
-  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::raftKVRpcProtoc::_GetReply_default_instance_),
-  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::raftKVRpcProtoc::_PutAppendArgs_default_instance_),
-  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::raftKVRpcProtoc::_PutAppendReply_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::raftKVRpcProctoc::_GetArgs_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::raftKVRpcProctoc::_GetReply_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::raftKVRpcProctoc::_PutAppendArgs_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::raftKVRpcProctoc::_PutAppendReply_default_instance_),
 };
 
 const char descriptor_table_protodef_kvServerRPC_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
-  "\n\021kvServerRPC.proto\022\017raftKVRpcProtoc\";\n\007"
-  "GetArgs\022\013\n\003Key\030\001 \001(\014\022\020\n\010ClientId\030\002 \001(\014\022\021"
-  "\n\tRequestId\030\003 \001(\005\"&\n\010GetReply\022\013\n\003Err\030\001 \001"
-  "(\014\022\r\n\005Value\030\002 \001(\014\"[\n\rPutAppendArgs\022\013\n\003Ke"
-  "y\030\001 \001(\014\022\014\n\004Vlue\030\002 \001(\014\022\n\n\002Op\030\003 \001(\014\022\020\n\010Cli"
-  "entId\030\004 \001(\014\022\021\n\tRequestId\030\005 \001(\005\"\035\n\016PutApp"
-  "endReply\022\013\n\003Err\030\001 \001(\0142\227\001\n\013kvServerRpc\022L\n"
-  "\tPutAppend\022\036.raftKVRpcProtoc.PutAppendAr"
-  "gs\032\037.raftKVRpcProtoc.PutAppendReply\022:\n\003G"
-  "et\022\030.raftKVRpcProtoc.GetArgs\032\031.raftKVRpc"
-  "Protoc.GetReplyB\003\200\001\001b\006proto3"
+  "\n\021kvServerRPC.proto\022\020raftKVRpcProctoc\";\n"
+  "\007GetArgs\022\013\n\003Key\030\001 \001(\014\022\020\n\010ClientId\030\002 \001(\014\022"
+  "\021\n\tRequestId\030\003 \001(\005\"&\n\010GetReply\022\013\n\003Err\030\001 "
+  "\001(\014\022\r\n\005Value\030\002 \001(\014\"\\\n\rPutAppendArgs\022\013\n\003K"
+  "ey\030\001 \001(\014\022\r\n\005Value\030\002 \001(\014\022\n\n\002Op\030\003 \001(\014\022\020\n\010C"
+  "lientId\030\004 \001(\014\022\021\n\tRequestId\030\005 \001(\005\"\035\n\016PutA"
+  "ppendReply\022\013\n\003Err\030\001 \001(\0142\233\001\n\013kvServerRpc\022"
+  "N\n\tPutAppend\022\037.raftKVRpcProctoc.PutAppen"
+  "dArgs\032 .raftKVRpcProctoc.PutAppendReply\022"
+  "<\n\003Get\022\031.raftKVRpcProctoc.GetArgs\032\032.raft"
+  "KVRpcProctoc.GetReplyB\003\200\001\001b\006proto3"
   ;
 static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_kvServerRPC_2eproto_deps[1] = {
 };
@@ -162,7 +162,7 @@ static ::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase*const descriptor_table_kvS
 };
 static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_kvServerRPC_2eproto_once;
 const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_kvServerRPC_2eproto = {
-  false, false, descriptor_table_protodef_kvServerRPC_2eproto, "kvServerRPC.proto", 428,
+  false, false, descriptor_table_protodef_kvServerRPC_2eproto, "kvServerRPC.proto", 434,
   &descriptor_table_kvServerRPC_2eproto_once, descriptor_table_kvServerRPC_2eproto_sccs, descriptor_table_kvServerRPC_2eproto_deps, 4, 0,
   schemas, file_default_instances, TableStruct_kvServerRPC_2eproto::offsets,
   file_level_metadata_kvServerRPC_2eproto, 4, file_level_enum_descriptors_kvServerRPC_2eproto, file_level_service_descriptors_kvServerRPC_2eproto,
@@ -170,7 +170,7 @@ const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_kvServ
 
 // Force running AddDescriptors() at dynamic initialization time.
 static bool dynamic_init_dummy_kvServerRPC_2eproto = (static_cast<void>(::PROTOBUF_NAMESPACE_ID::internal::AddDescriptors(&descriptor_table_kvServerRPC_2eproto)), true);
-namespace raftKVRpcProtoc {
+namespace raftKVRpcProctoc {
 
 // ===================================================================
 
@@ -184,7 +184,7 @@ GetArgs::GetArgs(::PROTOBUF_NAMESPACE_ID::Arena* arena)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
-  // @@protoc_insertion_point(arena_constructor:raftKVRpcProtoc.GetArgs)
+  // @@protoc_insertion_point(arena_constructor:raftKVRpcProctoc.GetArgs)
 }
 GetArgs::GetArgs(const GetArgs& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
@@ -200,7 +200,7 @@ GetArgs::GetArgs(const GetArgs& from)
       GetArena());
   }
   requestid_ = from.requestid_;
-  // @@protoc_insertion_point(copy_constructor:raftKVRpcProtoc.GetArgs)
+  // @@protoc_insertion_point(copy_constructor:raftKVRpcProctoc.GetArgs)
 }
 
 void GetArgs::SharedCtor() {
@@ -211,7 +211,7 @@ void GetArgs::SharedCtor() {
 }
 
 GetArgs::~GetArgs() {
-  // @@protoc_insertion_point(destructor:raftKVRpcProtoc.GetArgs)
+  // @@protoc_insertion_point(destructor:raftKVRpcProctoc.GetArgs)
   SharedDtor();
   _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -238,7 +238,7 @@ const GetArgs& GetArgs::default_instance() {
 
 
 void GetArgs::Clear() {
-// @@protoc_insertion_point(message_clear_start:raftKVRpcProtoc.GetArgs)
+// @@protoc_insertion_point(message_clear_start:raftKVRpcProctoc.GetArgs)
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -304,7 +304,7 @@ failure:
 
 ::PROTOBUF_NAMESPACE_ID::uint8* GetArgs::_InternalSerialize(
     ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
-  // @@protoc_insertion_point(serialize_to_array_start:raftKVRpcProtoc.GetArgs)
+  // @@protoc_insertion_point(serialize_to_array_start:raftKVRpcProctoc.GetArgs)
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -330,12 +330,12 @@ failure:
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:raftKVRpcProtoc.GetArgs)
+  // @@protoc_insertion_point(serialize_to_array_end:raftKVRpcProctoc.GetArgs)
   return target;
 }
 
 size_t GetArgs::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:raftKVRpcProtoc.GetArgs)
+// @@protoc_insertion_point(message_byte_size_start:raftKVRpcProctoc.GetArgs)
   size_t total_size = 0;
 
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
@@ -373,22 +373,22 @@ size_t GetArgs::ByteSizeLong() const {
 }
 
 void GetArgs::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
-// @@protoc_insertion_point(generalized_merge_from_start:raftKVRpcProtoc.GetArgs)
+// @@protoc_insertion_point(generalized_merge_from_start:raftKVRpcProctoc.GetArgs)
   GOOGLE_DCHECK_NE(&from, this);
   const GetArgs* source =
       ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetArgs>(
           &from);
   if (source == nullptr) {
-  // @@protoc_insertion_point(generalized_merge_from_cast_fail:raftKVRpcProtoc.GetArgs)
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:raftKVRpcProctoc.GetArgs)
     ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
   } else {
-  // @@protoc_insertion_point(generalized_merge_from_cast_success:raftKVRpcProtoc.GetArgs)
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:raftKVRpcProctoc.GetArgs)
     MergeFrom(*source);
   }
 }
 
 void GetArgs::MergeFrom(const GetArgs& from) {
-// @@protoc_insertion_point(class_specific_merge_from_start:raftKVRpcProtoc.GetArgs)
+// @@protoc_insertion_point(class_specific_merge_from_start:raftKVRpcProctoc.GetArgs)
   GOOGLE_DCHECK_NE(&from, this);
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
@@ -406,14 +406,14 @@ void GetArgs::MergeFrom(const GetArgs& from) {
 }
 
 void GetArgs::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
-// @@protoc_insertion_point(generalized_copy_from_start:raftKVRpcProtoc.GetArgs)
+// @@protoc_insertion_point(generalized_copy_from_start:raftKVRpcProctoc.GetArgs)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
 void GetArgs::CopyFrom(const GetArgs& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:raftKVRpcProtoc.GetArgs)
+// @@protoc_insertion_point(class_specific_copy_from_start:raftKVRpcProctoc.GetArgs)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
@@ -448,7 +448,7 @@ GetReply::GetReply(::PROTOBUF_NAMESPACE_ID::Arena* arena)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
-  // @@protoc_insertion_point(arena_constructor:raftKVRpcProtoc.GetReply)
+  // @@protoc_insertion_point(arena_constructor:raftKVRpcProctoc.GetReply)
 }
 GetReply::GetReply(const GetReply& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
@@ -463,7 +463,7 @@ GetReply::GetReply(const GetReply& from)
     value_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_value(),
       GetArena());
   }
-  // @@protoc_insertion_point(copy_constructor:raftKVRpcProtoc.GetReply)
+  // @@protoc_insertion_point(copy_constructor:raftKVRpcProctoc.GetReply)
 }
 
 void GetReply::SharedCtor() {
@@ -473,7 +473,7 @@ void GetReply::SharedCtor() {
 }
 
 GetReply::~GetReply() {
-  // @@protoc_insertion_point(destructor:raftKVRpcProtoc.GetReply)
+  // @@protoc_insertion_point(destructor:raftKVRpcProctoc.GetReply)
   SharedDtor();
   _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -500,7 +500,7 @@ const GetReply& GetReply::default_instance() {
 
 
 void GetReply::Clear() {
-// @@protoc_insertion_point(message_clear_start:raftKVRpcProtoc.GetReply)
+// @@protoc_insertion_point(message_clear_start:raftKVRpcProctoc.GetReply)
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -558,7 +558,7 @@ failure:
 
 ::PROTOBUF_NAMESPACE_ID::uint8* GetReply::_InternalSerialize(
     ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
-  // @@protoc_insertion_point(serialize_to_array_start:raftKVRpcProtoc.GetReply)
+  // @@protoc_insertion_point(serialize_to_array_start:raftKVRpcProctoc.GetReply)
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -578,12 +578,12 @@ failure:
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:raftKVRpcProtoc.GetReply)
+  // @@protoc_insertion_point(serialize_to_array_end:raftKVRpcProctoc.GetReply)
   return target;
 }
 
 size_t GetReply::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:raftKVRpcProtoc.GetReply)
+// @@protoc_insertion_point(message_byte_size_start:raftKVRpcProctoc.GetReply)
   size_t total_size = 0;
 
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
@@ -614,22 +614,22 @@ size_t GetReply::ByteSizeLong() const {
 }
 
 void GetReply::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
-// @@protoc_insertion_point(generalized_merge_from_start:raftKVRpcProtoc.GetReply)
+// @@protoc_insertion_point(generalized_merge_from_start:raftKVRpcProctoc.GetReply)
   GOOGLE_DCHECK_NE(&from, this);
   const GetReply* source =
       ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<GetReply>(
           &from);
   if (source == nullptr) {
-  // @@protoc_insertion_point(generalized_merge_from_cast_fail:raftKVRpcProtoc.GetReply)
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:raftKVRpcProctoc.GetReply)
     ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
   } else {
-  // @@protoc_insertion_point(generalized_merge_from_cast_success:raftKVRpcProtoc.GetReply)
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:raftKVRpcProctoc.GetReply)
     MergeFrom(*source);
   }
 }
 
 void GetReply::MergeFrom(const GetReply& from) {
-// @@protoc_insertion_point(class_specific_merge_from_start:raftKVRpcProtoc.GetReply)
+// @@protoc_insertion_point(class_specific_merge_from_start:raftKVRpcProctoc.GetReply)
   GOOGLE_DCHECK_NE(&from, this);
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
@@ -644,14 +644,14 @@ void GetReply::MergeFrom(const GetReply& from) {
 }
 
 void GetReply::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
-// @@protoc_insertion_point(generalized_copy_from_start:raftKVRpcProtoc.GetReply)
+// @@protoc_insertion_point(generalized_copy_from_start:raftKVRpcProctoc.GetReply)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
 void GetReply::CopyFrom(const GetReply& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:raftKVRpcProtoc.GetReply)
+// @@protoc_insertion_point(class_specific_copy_from_start:raftKVRpcProctoc.GetReply)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
@@ -685,7 +685,7 @@ PutAppendArgs::PutAppendArgs(::PROTOBUF_NAMESPACE_ID::Arena* arena)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
-  // @@protoc_insertion_point(arena_constructor:raftKVRpcProtoc.PutAppendArgs)
+  // @@protoc_insertion_point(arena_constructor:raftKVRpcProctoc.PutAppendArgs)
 }
 PutAppendArgs::PutAppendArgs(const PutAppendArgs& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
@@ -695,9 +695,9 @@ PutAppendArgs::PutAppendArgs(const PutAppendArgs& from)
     key_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_key(),
       GetArena());
   }
-  vlue_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
-  if (!from._internal_vlue().empty()) {
-    vlue_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_vlue(),
+  value_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  if (!from._internal_value().empty()) {
+    value_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_value(),
       GetArena());
   }
   op_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
@@ -711,20 +711,20 @@ PutAppendArgs::PutAppendArgs(const PutAppendArgs& from)
       GetArena());
   }
   requestid_ = from.requestid_;
-  // @@protoc_insertion_point(copy_constructor:raftKVRpcProtoc.PutAppendArgs)
+  // @@protoc_insertion_point(copy_constructor:raftKVRpcProctoc.PutAppendArgs)
 }
 
 void PutAppendArgs::SharedCtor() {
   ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_PutAppendArgs_kvServerRPC_2eproto.base);
   key_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
-  vlue_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  value_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   op_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   clientid_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   requestid_ = 0;
 }
 
 PutAppendArgs::~PutAppendArgs() {
-  // @@protoc_insertion_point(destructor:raftKVRpcProtoc.PutAppendArgs)
+  // @@protoc_insertion_point(destructor:raftKVRpcProctoc.PutAppendArgs)
   SharedDtor();
   _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -732,7 +732,7 @@ PutAppendArgs::~PutAppendArgs() {
 void PutAppendArgs::SharedDtor() {
   GOOGLE_DCHECK(GetArena() == nullptr);
   key_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
-  vlue_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  value_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   op_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   clientid_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
 }
@@ -753,13 +753,13 @@ const PutAppendArgs& PutAppendArgs::default_instance() {
 
 
 void PutAppendArgs::Clear() {
-// @@protoc_insertion_point(message_clear_start:raftKVRpcProtoc.PutAppendArgs)
+// @@protoc_insertion_point(message_clear_start:raftKVRpcProctoc.PutAppendArgs)
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
   key_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
-  vlue_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  value_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   op_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   clientid_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   requestid_ = 0;
@@ -782,10 +782,10 @@ const char* PutAppendArgs::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // bytes Vlue = 2;
+      // bytes Value = 2;
       case 2:
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 18)) {
-          auto str = _internal_mutable_vlue();
+          auto str = _internal_mutable_value();
           ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
         } else goto handle_unusual;
@@ -837,7 +837,7 @@ failure:
 
 ::PROTOBUF_NAMESPACE_ID::uint8* PutAppendArgs::_InternalSerialize(
     ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
-  // @@protoc_insertion_point(serialize_to_array_start:raftKVRpcProtoc.PutAppendArgs)
+  // @@protoc_insertion_point(serialize_to_array_start:raftKVRpcProctoc.PutAppendArgs)
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -847,10 +847,10 @@ failure:
         1, this->_internal_key(), target);
   }
 
-  // bytes Vlue = 2;
-  if (this->vlue().size() > 0) {
+  // bytes Value = 2;
+  if (this->value().size() > 0) {
     target = stream->WriteBytesMaybeAliased(
-        2, this->_internal_vlue(), target);
+        2, this->_internal_value(), target);
   }
 
   // bytes Op = 3;
@@ -875,12 +875,12 @@ failure:
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:raftKVRpcProtoc.PutAppendArgs)
+  // @@protoc_insertion_point(serialize_to_array_end:raftKVRpcProctoc.PutAppendArgs)
   return target;
 }
 
 size_t PutAppendArgs::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:raftKVRpcProtoc.PutAppendArgs)
+// @@protoc_insertion_point(message_byte_size_start:raftKVRpcProctoc.PutAppendArgs)
   size_t total_size = 0;
 
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
@@ -894,11 +894,11 @@ size_t PutAppendArgs::ByteSizeLong() const {
         this->_internal_key());
   }
 
-  // bytes Vlue = 2;
-  if (this->vlue().size() > 0) {
+  // bytes Value = 2;
+  if (this->value().size() > 0) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::BytesSize(
-        this->_internal_vlue());
+        this->_internal_value());
   }
 
   // bytes Op = 3;
@@ -932,22 +932,22 @@ size_t PutAppendArgs::ByteSizeLong() const {
 }
 
 void PutAppendArgs::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
-// @@protoc_insertion_point(generalized_merge_from_start:raftKVRpcProtoc.PutAppendArgs)
+// @@protoc_insertion_point(generalized_merge_from_start:raftKVRpcProctoc.PutAppendArgs)
   GOOGLE_DCHECK_NE(&from, this);
   const PutAppendArgs* source =
       ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<PutAppendArgs>(
           &from);
   if (source == nullptr) {
-  // @@protoc_insertion_point(generalized_merge_from_cast_fail:raftKVRpcProtoc.PutAppendArgs)
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:raftKVRpcProctoc.PutAppendArgs)
     ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
   } else {
-  // @@protoc_insertion_point(generalized_merge_from_cast_success:raftKVRpcProtoc.PutAppendArgs)
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:raftKVRpcProctoc.PutAppendArgs)
     MergeFrom(*source);
   }
 }
 
 void PutAppendArgs::MergeFrom(const PutAppendArgs& from) {
-// @@protoc_insertion_point(class_specific_merge_from_start:raftKVRpcProtoc.PutAppendArgs)
+// @@protoc_insertion_point(class_specific_merge_from_start:raftKVRpcProctoc.PutAppendArgs)
   GOOGLE_DCHECK_NE(&from, this);
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
@@ -956,8 +956,8 @@ void PutAppendArgs::MergeFrom(const PutAppendArgs& from) {
   if (from.key().size() > 0) {
     _internal_set_key(from._internal_key());
   }
-  if (from.vlue().size() > 0) {
-    _internal_set_vlue(from._internal_vlue());
+  if (from.value().size() > 0) {
+    _internal_set_value(from._internal_value());
   }
   if (from.op().size() > 0) {
     _internal_set_op(from._internal_op());
@@ -971,14 +971,14 @@ void PutAppendArgs::MergeFrom(const PutAppendArgs& from) {
 }
 
 void PutAppendArgs::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
-// @@protoc_insertion_point(generalized_copy_from_start:raftKVRpcProtoc.PutAppendArgs)
+// @@protoc_insertion_point(generalized_copy_from_start:raftKVRpcProctoc.PutAppendArgs)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
 void PutAppendArgs::CopyFrom(const PutAppendArgs& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:raftKVRpcProtoc.PutAppendArgs)
+// @@protoc_insertion_point(class_specific_copy_from_start:raftKVRpcProctoc.PutAppendArgs)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
@@ -992,7 +992,7 @@ void PutAppendArgs::InternalSwap(PutAppendArgs* other) {
   using std::swap;
   _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   key_.Swap(&other->key_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
-  vlue_.Swap(&other->vlue_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  value_.Swap(&other->value_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   op_.Swap(&other->op_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   clientid_.Swap(&other->clientid_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   swap(requestid_, other->requestid_);
@@ -1015,7 +1015,7 @@ PutAppendReply::PutAppendReply(::PROTOBUF_NAMESPACE_ID::Arena* arena)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
   RegisterArenaDtor(arena);
-  // @@protoc_insertion_point(arena_constructor:raftKVRpcProtoc.PutAppendReply)
+  // @@protoc_insertion_point(arena_constructor:raftKVRpcProctoc.PutAppendReply)
 }
 PutAppendReply::PutAppendReply(const PutAppendReply& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
@@ -1025,7 +1025,7 @@ PutAppendReply::PutAppendReply(const PutAppendReply& from)
     err_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_err(),
       GetArena());
   }
-  // @@protoc_insertion_point(copy_constructor:raftKVRpcProtoc.PutAppendReply)
+  // @@protoc_insertion_point(copy_constructor:raftKVRpcProctoc.PutAppendReply)
 }
 
 void PutAppendReply::SharedCtor() {
@@ -1034,7 +1034,7 @@ void PutAppendReply::SharedCtor() {
 }
 
 PutAppendReply::~PutAppendReply() {
-  // @@protoc_insertion_point(destructor:raftKVRpcProtoc.PutAppendReply)
+  // @@protoc_insertion_point(destructor:raftKVRpcProctoc.PutAppendReply)
   SharedDtor();
   _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
@@ -1060,7 +1060,7 @@ const PutAppendReply& PutAppendReply::default_instance() {
 
 
 void PutAppendReply::Clear() {
-// @@protoc_insertion_point(message_clear_start:raftKVRpcProtoc.PutAppendReply)
+// @@protoc_insertion_point(message_clear_start:raftKVRpcProctoc.PutAppendReply)
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -1109,7 +1109,7 @@ failure:
 
 ::PROTOBUF_NAMESPACE_ID::uint8* PutAppendReply::_InternalSerialize(
     ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
-  // @@protoc_insertion_point(serialize_to_array_start:raftKVRpcProtoc.PutAppendReply)
+  // @@protoc_insertion_point(serialize_to_array_start:raftKVRpcProctoc.PutAppendReply)
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -1123,12 +1123,12 @@ failure:
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:raftKVRpcProtoc.PutAppendReply)
+  // @@protoc_insertion_point(serialize_to_array_end:raftKVRpcProctoc.PutAppendReply)
   return target;
 }
 
 size_t PutAppendReply::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:raftKVRpcProtoc.PutAppendReply)
+// @@protoc_insertion_point(message_byte_size_start:raftKVRpcProctoc.PutAppendReply)
   size_t total_size = 0;
 
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
@@ -1152,22 +1152,22 @@ size_t PutAppendReply::ByteSizeLong() const {
 }
 
 void PutAppendReply::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
-// @@protoc_insertion_point(generalized_merge_from_start:raftKVRpcProtoc.PutAppendReply)
+// @@protoc_insertion_point(generalized_merge_from_start:raftKVRpcProctoc.PutAppendReply)
   GOOGLE_DCHECK_NE(&from, this);
   const PutAppendReply* source =
       ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<PutAppendReply>(
           &from);
   if (source == nullptr) {
-  // @@protoc_insertion_point(generalized_merge_from_cast_fail:raftKVRpcProtoc.PutAppendReply)
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:raftKVRpcProctoc.PutAppendReply)
     ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
   } else {
-  // @@protoc_insertion_point(generalized_merge_from_cast_success:raftKVRpcProtoc.PutAppendReply)
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:raftKVRpcProctoc.PutAppendReply)
     MergeFrom(*source);
   }
 }
 
 void PutAppendReply::MergeFrom(const PutAppendReply& from) {
-// @@protoc_insertion_point(class_specific_merge_from_start:raftKVRpcProtoc.PutAppendReply)
+// @@protoc_insertion_point(class_specific_merge_from_start:raftKVRpcProctoc.PutAppendReply)
   GOOGLE_DCHECK_NE(&from, this);
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
@@ -1179,14 +1179,14 @@ void PutAppendReply::MergeFrom(const PutAppendReply& from) {
 }
 
 void PutAppendReply::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
-// @@protoc_insertion_point(generalized_copy_from_start:raftKVRpcProtoc.PutAppendReply)
+// @@protoc_insertion_point(generalized_copy_from_start:raftKVRpcProctoc.PutAppendReply)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
 void PutAppendReply::CopyFrom(const PutAppendReply& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:raftKVRpcProtoc.PutAppendReply)
+// @@protoc_insertion_point(class_specific_copy_from_start:raftKVRpcProctoc.PutAppendReply)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
@@ -1221,16 +1221,16 @@ const ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor* kvServerRpc::GetDescriptor() {
 }
 
 void kvServerRpc::PutAppend(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                         const ::raftKVRpcProtoc::PutAppendArgs*,
-                         ::raftKVRpcProtoc::PutAppendReply*,
+                         const ::raftKVRpcProctoc::PutAppendArgs*,
+                         ::raftKVRpcProctoc::PutAppendReply*,
                          ::google::protobuf::Closure* done) {
   controller->SetFailed("Method PutAppend() not implemented.");
   done->Run();
 }
 
 void kvServerRpc::Get(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                         const ::raftKVRpcProtoc::GetArgs*,
-                         ::raftKVRpcProtoc::GetReply*,
+                         const ::raftKVRpcProctoc::GetArgs*,
+                         ::raftKVRpcProctoc::GetReply*,
                          ::google::protobuf::Closure* done) {
   controller->SetFailed("Method Get() not implemented.");
   done->Run();
@@ -1245,17 +1245,17 @@ void kvServerRpc::CallMethod(const ::PROTOBUF_NAMESPACE_ID::MethodDescriptor* me
   switch(method->index()) {
     case 0:
       PutAppend(controller,
-             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<const ::raftKVRpcProtoc::PutAppendArgs*>(
+             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<const ::raftKVRpcProctoc::PutAppendArgs*>(
                  request),
-             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<::raftKVRpcProtoc::PutAppendReply*>(
+             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<::raftKVRpcProctoc::PutAppendReply*>(
                  response),
              done);
       break;
     case 1:
       Get(controller,
-             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<const ::raftKVRpcProtoc::GetArgs*>(
+             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<const ::raftKVRpcProctoc::GetArgs*>(
                  request),
-             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<::raftKVRpcProtoc::GetReply*>(
+             ::PROTOBUF_NAMESPACE_ID::internal::DownCast<::raftKVRpcProctoc::GetReply*>(
                  response),
              done);
       break;
@@ -1270,9 +1270,9 @@ const ::PROTOBUF_NAMESPACE_ID::Message& kvServerRpc::GetRequestPrototype(
   GOOGLE_DCHECK_EQ(method->service(), descriptor());
   switch(method->index()) {
     case 0:
-      return ::raftKVRpcProtoc::PutAppendArgs::default_instance();
+      return ::raftKVRpcProctoc::PutAppendArgs::default_instance();
     case 1:
-      return ::raftKVRpcProtoc::GetArgs::default_instance();
+      return ::raftKVRpcProctoc::GetArgs::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
       return *::PROTOBUF_NAMESPACE_ID::MessageFactory::generated_factory()
@@ -1285,9 +1285,9 @@ const ::PROTOBUF_NAMESPACE_ID::Message& kvServerRpc::GetResponsePrototype(
   GOOGLE_DCHECK_EQ(method->service(), descriptor());
   switch(method->index()) {
     case 0:
-      return ::raftKVRpcProtoc::PutAppendReply::default_instance();
+      return ::raftKVRpcProctoc::PutAppendReply::default_instance();
     case 1:
-      return ::raftKVRpcProtoc::GetReply::default_instance();
+      return ::raftKVRpcProctoc::GetReply::default_instance();
     default:
       GOOGLE_LOG(FATAL) << "Bad method index; this should never happen.";
       return *::PROTOBUF_NAMESPACE_ID::MessageFactory::generated_factory()
@@ -1307,34 +1307,34 @@ kvServerRpc_Stub::~kvServerRpc_Stub() {
 }
 
 void kvServerRpc_Stub::PutAppend(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                              const ::raftKVRpcProtoc::PutAppendArgs* request,
-                              ::raftKVRpcProtoc::PutAppendReply* response,
+                              const ::raftKVRpcProctoc::PutAppendArgs* request,
+                              ::raftKVRpcProctoc::PutAppendReply* response,
                               ::google::protobuf::Closure* done) {
   channel_->CallMethod(descriptor()->method(0),
                        controller, request, response, done);
 }
 void kvServerRpc_Stub::Get(::PROTOBUF_NAMESPACE_ID::RpcController* controller,
-                              const ::raftKVRpcProtoc::GetArgs* request,
-                              ::raftKVRpcProtoc::GetReply* response,
+                              const ::raftKVRpcProctoc::GetArgs* request,
+                              ::raftKVRpcProctoc::GetReply* response,
                               ::google::protobuf::Closure* done) {
   channel_->CallMethod(descriptor()->method(1),
                        controller, request, response, done);
 }
 
 // @@protoc_insertion_point(namespace_scope)
-}  // namespace raftKVRpcProtoc
+}  // namespace raftKVRpcProctoc
 PROTOBUF_NAMESPACE_OPEN
-template<> PROTOBUF_NOINLINE ::raftKVRpcProtoc::GetArgs* Arena::CreateMaybeMessage< ::raftKVRpcProtoc::GetArgs >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::raftKVRpcProtoc::GetArgs >(arena);
+template<> PROTOBUF_NOINLINE ::raftKVRpcProctoc::GetArgs* Arena::CreateMaybeMessage< ::raftKVRpcProctoc::GetArgs >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::raftKVRpcProctoc::GetArgs >(arena);
 }
-template<> PROTOBUF_NOINLINE ::raftKVRpcProtoc::GetReply* Arena::CreateMaybeMessage< ::raftKVRpcProtoc::GetReply >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::raftKVRpcProtoc::GetReply >(arena);
+template<> PROTOBUF_NOINLINE ::raftKVRpcProctoc::GetReply* Arena::CreateMaybeMessage< ::raftKVRpcProctoc::GetReply >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::raftKVRpcProctoc::GetReply >(arena);
 }
-template<> PROTOBUF_NOINLINE ::raftKVRpcProtoc::PutAppendArgs* Arena::CreateMaybeMessage< ::raftKVRpcProtoc::PutAppendArgs >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::raftKVRpcProtoc::PutAppendArgs >(arena);
+template<> PROTOBUF_NOINLINE ::raftKVRpcProctoc::PutAppendArgs* Arena::CreateMaybeMessage< ::raftKVRpcProctoc::PutAppendArgs >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::raftKVRpcProctoc::PutAppendArgs >(arena);
 }
-template<> PROTOBUF_NOINLINE ::raftKVRpcProtoc::PutAppendReply* Arena::CreateMaybeMessage< ::raftKVRpcProtoc::PutAppendReply >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::raftKVRpcProtoc::PutAppendReply >(arena);
+template<> PROTOBUF_NOINLINE ::raftKVRpcProctoc::PutAppendReply* Arena::CreateMaybeMessage< ::raftKVRpcProctoc::PutAppendReply >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::raftKVRpcProctoc::PutAppendReply >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 

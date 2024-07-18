@@ -3,7 +3,7 @@
 // created by magic_pri on 2024-7-8
 //
 
-#include "./include/RaftRpcUtil.h"
+#include "RaftRpcUtil.h"
 
 /*
 AppendEntries 方法

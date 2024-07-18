@@ -4,7 +4,7 @@
 //
 
 
-#include "./include/raft.h"
+#include "raft.h"
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <memory>
@@ -1252,4 +1252,22 @@ CondInstallSnapshot 函数
 */
 bool Raft::CondInstallSnapshot(int lastIncludedTerm, int lastIncludedIndex, std::string snapshot) { 
   return true;
+}
+
+
+
+/* ------------------------------RPC 调用重写 ---------------------------------------*/
+
+void Raft::InstallSnapshot(google::protobuf::RpcController* controller,
+                           const ::raftRpcProctoc::InstallSnapshotRequest* request,
+                           ::raftRpcProctoc::InstallSnapshotResponse* response, ::google::protobuf::Closure* done) {
+  InstallSnapshot(request, response);
+
+  done->Run();
+}
+
+void Raft::RequestVote(google::protobuf::RpcController* controller, const ::raftRpcProctoc::RequestVoteArgs* request,
+                       ::raftRpcProctoc::RequestVoteReply* response, ::google::protobuf::Closure* done) {
+  RequestVote(request, response);
+  done->Run();
 }

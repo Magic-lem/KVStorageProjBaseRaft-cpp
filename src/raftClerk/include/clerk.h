@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 #include "raftServerRpcUtil.h"
+#include "util.h"
+#include "mprpcconfig.h"
 
 // 客户端与kv server交互类
 // 封装了与多个 Raft 节点通信的逻辑，实现了基本的 Get、Put 和 Append 操作
@@ -35,7 +37,7 @@ private:
 
 private:
   std::vector<std::shared_ptr<raftServerRpcUtil>> m_servers;    // 保存与所有kvserver raft节点的通信接口
-  std::string m_clinetId;   // 当前客户端的标识符ID
+  std::string m_clientId;   // 当前客户端的标识符ID
   int m_requestId;    // 请求的ID，逐渐累加
   int m_recentLeaderId;   // 最近一次已知的 Raft leader 节点的编号
 };

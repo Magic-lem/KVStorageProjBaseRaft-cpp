@@ -39,7 +39,7 @@ bool raftServerRpcUtil::PutAppend(raftKVRpcProctoc::PutAppendArgs *args, raftKVR
   MprpcController controller;
   stub->PutAppend(&controller, args, reply, nullptr);
   if (controller.Failed()) {
-    std::cout << controller.ErrorText() << endl;
+    std::cout << controller.ErrorText() << std::endl;
   }
   return !controller.Failed();
 }

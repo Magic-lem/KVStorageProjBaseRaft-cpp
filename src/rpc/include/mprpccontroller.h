@@ -3,7 +3,7 @@
 // created by magic_pri on 2024-6-21
 //
 
-#ifndef MPRPCCONTROLL:ER_H
+#ifndef MPRPCCONTROLLER_H
 #define MPRPCCONTROLLER_H
 
 #include <google/protobuf/service.h>

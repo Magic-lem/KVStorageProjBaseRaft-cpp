@@ -8,7 +8,7 @@
 #include <memory>
 #include <functional>
 #include <set>
-#include "./include/mutex.hpp"
+#include "mutex.hpp"
 
 namespace monsoon {
 

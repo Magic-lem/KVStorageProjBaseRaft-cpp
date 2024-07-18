@@ -3,13 +3,13 @@
 // created by magic_pri on 2024-7-17
 //
 
-#iclude "clerk.h"
+#include "clerk.h"
 
 /*
 Clerk::Get 函数
 主要功能：获取数据库中指定键所对应的值
 */
-std::sring Clerk::Get(std::string key) {
+std::string Clerk::Get(std::string key) {
   m_requestId++;    // 增加发送的请求ID
   auto requestId = m_requestId;
 
@@ -18,7 +18,7 @@ std::sring Clerk::Get(std::string key) {
   // 构造请求参数
   raftKVRpcProctoc::GetArgs args;
   args.set_key(key);
-  args.set_clientid(m_clinetId);
+  args.set_clientid(m_clientId);
   args.set_requestid(requestId);
 
   // 向目标raft节点发送请求，并处理返回消息
@@ -109,7 +109,7 @@ void Clerk::Init(std::string configFileName) {
   for (int i = 0; i < INT_MAX - 1; ++i) {
     std::string node = "node" + std::to_string(i);
     std::string nodeIp = config.Load(node + "ip");
-    std::string nodePortStr = config.Load(node + "port";
+    std::string nodePortStr = config.Load(node + "port");
 
     if (nodeIp.empty()) {   // 没有节点
       break;
@@ -119,7 +119,7 @@ void Clerk::Init(std::string configFileName) {
   }
 
   // 进行连接
-  for (cinst auto &item : ipPortVt) {
+  for (const auto &item : ipPortVt) {
     std::string ip = item.first;
     short port = item.second;
 

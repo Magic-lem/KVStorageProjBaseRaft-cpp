@@ -3,8 +3,8 @@
 // created by magic_pri on 2024-6-20
 // 
 
-#include "./include/util.h"
-#include "./include/config.h"
+#include "util.h"
+#include "config.h"
 #include <ctime>    // time_t   time()  tm  localtime()
 #include <stdarg.h>   // va_list
 #include <cstdio>  // printf()
@@ -83,3 +83,9 @@ bool isReleasePort(unsigned short usPort) {
   close(s);
   return true;
 }
+
+
+/*
+  now：获得当前时间， 提供了最高可能的分辨率的时间测量，适用于需要非常精确的时间点或时间间隔的场景。
+*/
+std::chrono::_V2::system_clock::time_point now() { return std::chrono::high_resolution_clock::now(); }

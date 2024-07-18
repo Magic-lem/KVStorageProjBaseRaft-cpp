@@ -3,7 +3,7 @@
 // created by magic_pri on 2024-6-27
 //
 
-#include "./include/hook.hpp"
+#include "hook.hpp"
 #include <dlfcn.h>  // dlsym, RTLD_NEXT
 #include <cstdarg>
 #include <errno.h>

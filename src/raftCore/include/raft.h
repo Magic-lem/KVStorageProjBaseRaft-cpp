@@ -13,8 +13,8 @@
 #include <memory>
 #include "RaftRpcUtil.h"
 #include "ApplyMsg.h"
-#include "../../common/include/config.h"
-#include "../../common/include/util.h"
+#include "config.h"
+#include "util.h"
 #include "raftRPC.pb.h"
 #include "Persister.h"
 #include "iomanager.hpp"

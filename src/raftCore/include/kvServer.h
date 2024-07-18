@@ -17,8 +17,12 @@
 #include <boost/serialization/unordered_map.hpp>
 #include <boost/serialization/vector.hpp>
 #include "kvServerRPC.pb.h"
+#include "ApplyMsg.h"
 #include "raft.h"
 #include "skipList.h"
+#include "util.h"
+#include "mprpcconfig.h"
+#include "rpcprovider.h"
 #include <iostream>
 #include <mutex>
 #include <unordered_map>
@@ -26,11 +30,11 @@
 /*
 键值存储服务器，它基于 Raft 共识算法实现。它通过 RPC 与客户端进行交互，同时通过 Raft 节点之间的通信保持一致性
 */
-class KvServer : raftRpcProctoc::kvServerRPC {
+class KvServer : raftKVRpcProctoc::kvServerRpc {
 public:
   KvServer() = delete;    // 禁用默认构造函数
 
-  KvServer(int me, int m_maxRaftState, std::string nodeInforFileName, shor port);   // 含参构造函数
+  KvServer(int me, int m_maxRaftState, std::string nodeInforFileName, short port);   // 含参构造函数
 
   void StartKVServer();   // 启动 KV 服务器
 
@@ -103,7 +107,7 @@ private:
   std::mutex m_mtx;
   int m_me;   // 当前数据库标识符
   std::shared_ptr<Raft> m_raftNode;    // 当前kv数据库所对应的raft节点
-  std::shared_ptr<LockQueue<<ApplyMsg>> applyChan;    //  Raft 节点与 KV 服务器之间通信的通道，是一个线程安全队列
+  std::shared_ptr<LockQueue<ApplyMsg> > applyChan;    //  Raft 节点与 KV 服务器之间通信的通道，是一个线程安全队列
   int m_maxRaftState;  // Raft 状态的最大值，用于判断是否需要进行快照。
 
   std::string m_serializedKVData;   // 序列化的键值数据
@@ -112,7 +116,7 @@ private:
 
   std::unordered_map<int, LockQueue<Op> *>  waitApplyCh;    // 等待应用的操作通道，键为 Raft 的日志条目索引。
 
-  std::unordered_map<std::sring, int> m_lastRequestId;    // 记录每个客户端的最后请求 ID，一个kV服务器可能连接多个client
+  std::unordered_map<std::string, int> m_lastRequestId;    // 记录每个客户端的最后请求 ID，一个kV服务器可能连接多个client
 
   int m_lastSnapShotRaftLogIndex;    // 最后一个快照的日志条目索引
 };

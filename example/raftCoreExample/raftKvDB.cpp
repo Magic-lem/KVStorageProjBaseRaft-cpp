@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 
   std::random_device rd;    // 随机数种子生成器
   std::mt19937 gen(rd());    // 梅森旋转随机数生成器，使用 rd() 生成的种子进行初始化。gen为创建的伪随机数生成器实例，用于产生随机数。
-  std::uniform_int_distribution<> dis()       // 均匀分布的整数随机数分布范围对象，生成 10000 到 29999 之间的随机数，用于产生在这个范围内均匀分布的随机端口号
+  std::uniform_int_distribution<> dis(10000, 29999);       // 均匀分布的整数随机数分布范围对象，生成 10000 到 29999 之间的随机数，用于产生在这个范围内均匀分布的随机端口号
   unsigned short StartPort = dis(gen);  // 生成一个 10000 到 29999 之间的端口号，用于为第一个 Raft 节点指定起始端口号，后续节点的端口号基于这个起始端口号递增。
 
 
@@ -68,8 +68,8 @@ int main(int argc, char **argv) {
 
   // 根据节点数量创建多个kvserver raft节点
   for (int i = 0; i < nodeNum; i++) {
-    short port = startPort + static_cast<short>(i);   // 为每个节点分配一个唯一的端口号
-    std::cout << "start to create raftkv node: " << i "  port: " << port << " pid: " << getpid() << std::endl;
+    short port = StartPort + static_cast<short>(i);   // 为每个节点分配一个唯一的端口号
+    std::cout << "start to create raftkv node: " << i << "  port: " << port << " pid: " << getpid() << std::endl;
 
     pid_t pid = fork();   // 创建子进程
     if (pid == 0) {   

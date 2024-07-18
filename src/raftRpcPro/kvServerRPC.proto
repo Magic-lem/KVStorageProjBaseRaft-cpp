@@ -2,7 +2,7 @@
 
 syntax = "proto3";
 
-package raftKVRpcProtoc;   // 命名空间
+package raftKVRpcProctoc;   // 命名空间
 
 option cc_generic_services = true;   // 开启stub服务
 
@@ -22,7 +22,7 @@ message GetReply {
 // PutAppendArgs  put或者append请求的消息类型
 message PutAppendArgs {
     bytes Key = 1;              // 键
-    bytes Vlue = 2;             // 值
+    bytes Value = 2;             // 值
     bytes Op = 3;               // Put or Append
     bytes ClientId = 4;         // 客户端ID
     int32 RequestId = 5;          // 请求ID，标识请求的唯一性

@@ -3,7 +3,7 @@
 // created by magic_pri on 2024-6-21
 //
 
-#include "./include/mprpccontroller.h"
+#include "mprpccontroller.h"
 
 // 构造函数，初始化两个成员变量
 MprpcController::MprpcController(): m_failed(false), m_errText(""), m_canceled(false), m_cancelCallback(nullptr) {}

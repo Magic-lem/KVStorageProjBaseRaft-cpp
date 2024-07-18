@@ -6,10 +6,10 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include "./include/mprpcchannel.h"
-#include "./include/mprpccontroller.h"
-#include "./include/rpcheader.pb.h"
-#include "common/include/util.h"
+#include "mprpcchannel.h"
+#include "mprpccontroller.h"
+#include "rpcheader.pb.h"
+#include "util.h"
 
 // 所有通过代理对象调用的rpc方法，都会到这里
 // 统一通过rpcChannel来调用服务方法

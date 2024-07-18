@@ -3,8 +3,8 @@
 // created by magic_pri on 2024-6-28
 //
 
-#include "./include/timer.hpp"
-#include "./include/utils.hpp"
+#include "timer.hpp"
+#include "utils.hpp"
 
 namespace monsoon {
 
@@ -145,7 +145,7 @@ static void OnTimer(std::weak_ptr<void> weak_cond, std::function<void()> cb) {
 }
 // 由于条件对象可能会含有指向timer的共享指针，所以这里用weak_ptr，防止循环引用
 Timer::ptr TimerManager::addConditionTimer(uint64_t ms, std::function<void()> cb, std::weak_ptr<void> weak_cond,
-                                            bool recuriing = false) {
+                                            bool recuriing) {
     return addTimer(ms, std::bind(&OnTimer, weak_cond, cb), recuriing);  // 调用Timer::ptr addTimer函数，使用std::bind绑定可调用对象OnTimer和参数作为回调函数
 }
 

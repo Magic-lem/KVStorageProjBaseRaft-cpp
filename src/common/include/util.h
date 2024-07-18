@@ -141,16 +141,13 @@ DEFER 宏创建了一个 DeferClass 对象，命名为 defer_placeholder 加上�
 void myAssert(bool condition, std::string message = "Assertion failed!");
 
 
-/*
-  now：获得当前时间， 提供了最高可能的分辨率的时间测量，适用于需要非常精确的时间点或时间间隔的场景。
-*/
-std::chrono::_V2::system_clock::time_point now() { return std::chrono::high_resolution_clock::now(); }
+std::chrono::_V2::system_clock::time_point now();
 
 
 /*
   sleepNMilliseconds：睡眠一段时间
 */
-void sleepNMilliseconds(int N) { std::this_thread::sleep_for(std::chrono::milliseconds(N)); };
+void sleepNMilliseconds(int N);
 
 
 
@@ -212,7 +209,7 @@ private:
   template <class Archive>
   void serialize(Archive& ar, const unsigned int version) {
     ar& Operation;
-    ar& key;
+    ar& Key;
     ar& Value;
     ar& ClientId;
     ar& RequestId;

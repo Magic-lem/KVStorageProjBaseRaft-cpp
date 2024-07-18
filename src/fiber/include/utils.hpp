@@ -113,7 +113,6 @@ static void CondPanic(bool condition, std::string err){
         assert(condition);
     }
 }
-}
 
 /*
 GetThreadId
@@ -133,7 +132,7 @@ static uint64_t GetElapsedMS() {
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);   // 获取从系统启动以来的时间
     return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;     // 转换为ms
 }
-
+}
 
 
 #endif

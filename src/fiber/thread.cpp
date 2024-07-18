@@ -3,7 +3,7 @@
 // created by magic_pri on 2024-6-24
 //
 
-#include "./include/thread.hpp"
+#include "thread.hpp"
 #include <iostream>
 
 namespace monsoon {
