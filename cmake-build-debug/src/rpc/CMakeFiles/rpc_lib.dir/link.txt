@@ -1,0 +1,2 @@
+/usr/bin/ar qc /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/lib/librpc_lib.a CMakeFiles/rpc_lib.dir/mprpcchannel.cpp.o CMakeFiles/rpc_lib.dir/mprpcconfig.cpp.o CMakeFiles/rpc_lib.dir/mprpccontroller.cpp.o CMakeFiles/rpc_lib.dir/rpcheader.pb.cc.o CMakeFiles/rpc_lib.dir/rpcprovicer.cpp.o CMakeFiles/rpc_lib.dir/__/common/util.cpp.o
+/usr/bin/ranlib /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/lib/librpc_lib.a

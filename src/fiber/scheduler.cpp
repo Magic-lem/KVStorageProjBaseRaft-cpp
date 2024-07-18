@@ -125,7 +125,7 @@ void Scheduler::run() {
     SchedulerTask task;  // 任务
     while (true) {  // 调度器将在这个循环中不断调度和执行任务，直到外部条件中断
         task.reset();   // 重置任务，确保每一轮开始任务是空的
-        bool tickle_me;  // 用来标记是否需要通知线程进行调度的变量
+        bool tickle_me = false;  // 用来标记是否需要通知线程进行调度的变量
         {
             Mutex::Lock lock(mutex_);
             auto it = tasks_.begin();  
@@ -167,6 +167,10 @@ void Scheduler::run() {
             } else {
                 cbFiber.reset(new Fiber(task.cb_)); // 共享指针的重置，指向一个新Fiber对象
             }
+            task.reset();
+            cbFiber->resume();
+            --activeThreadCnt_;
+            cbFiber.reset();
         } else {
             // 没有任务，task为空，执行idle协程
             if (idleFiber->getState() == Fiber::TERM) { // 但是idle协程结束了
@@ -217,42 +221,41 @@ stop：停止调度器
 主要作用：
 */
 void Scheduler::stop() {
-    std::cout << LOG_HEAD << "stop" << std::endl;
-    if (stopping()) return;     // 已经处于停止状态了
-    isStopped_ = true;  // 设置停止标志
+  std::cout << LOG_HEAD << "stop" << std::endl;
+  if (stopping()) {
+    return;
+  }
+  isStopped_ = true;
 
-    // 对于use_caller模式，stop只能由caller线程执行
-    if (isUseCaller_) {
-        // 疑问？ 为什么这样能保证是caller线程
-        CondPanic(GetThis() == this, "cur thread is not caller thread");    // caller线程是管理调度器的
-    } else {
-        CondPanic(GetThis() != this, "cur thread is work thread");      // 
-    }
+  // stop指令只能由caller线程发起
+  if (isUseCaller_) {
+    CondPanic(GetThis() == this, "cur thread is not caller thread");
+  } else {
+    CondPanic(GetThis() != this, "cur thread is caller thread");
+  }
 
-    for (size_t i = 0; i < threadCnt_; i++) {
-        tickle();   // 唤醒线程从任务对列中获取任务执行
-    }
-    if (rootFiber_) {   
-        tickle();
-    }
+  for (size_t i = 0; i < threadCnt_; i++) {
+    tickle();
+  }
+  if (rootFiber_) {
+    tickle();
+  }
 
-    // 在use_caller情况下，应当唤醒调度器协程（rootFiber），以便调度器正确终止。结束后，应该返回调度协程(caller协程，即当前)
-    if (rootFiber_) {
-        rootFiber_->resume();
-        std::cout << "root fiber << end" << std::endl;
-    }
+  // 在user_caller情况下，调度器协程（rootFiber）结束后，应该返回caller协程
+  if (rootFiber_) {
+    // 切换到调度协程，开始调度
+    rootFiber_->resume();
+    std::cout << "root fiber end" << std::endl;
+  }
 
-    // 等待所有线程退出
-    std::vector<Thread::ptr> threads;
-    {
-        Mutex::Lock lock(mutex_);   
-        threads.swap(threadPool_);  // 从线程池移动到threas中，清空线程池
-    }
-
-    for (auto &i: threads) {
-        i->join();  // 等待所有线程执行完毕
-    }
-
+  std::vector<Thread::ptr> threads;
+  {
+    Mutex::Lock lock(mutex_);
+    threads.swap(threadPool_);
+  }
+  for (auto &i : threads) {
+    i->join();
+  }
 }
 
 /*

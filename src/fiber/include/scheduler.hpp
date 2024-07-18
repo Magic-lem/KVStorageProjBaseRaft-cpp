@@ -122,7 +122,7 @@ private:
     std::atomic<size_t> idleTreadCnt_ = {0};  // IDL线程（在线程池中处于空闲的线程）数目
     Fiber::ptr rootFiber_;   // 指向本线程的调度协程（主协程）
     bool isUseCaller_;   // 是否使用use_caller模式
-    bool isStopped_;   // 线程池或调度器是否已经停止
+    bool isStopped_ = false;   // 线程池或调度器是否已经停止
 
     // 以下变量仅在use_caller模式中有用
     Fiber::ptr fiber_;   // 存储调度器协程所在线程（主线程）的协程（因为use_caller模式，主线程也会执行除管理线程池或调度器以外的任务）

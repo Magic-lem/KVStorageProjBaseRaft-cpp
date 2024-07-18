@@ -104,11 +104,11 @@ void Fiber::resume() {
     // 执行协程的上下文切换
     if (isRunInscheduler_) {
         // 如果是参与调度器调度，则与调度器进行上下文的切换
-        CondPanic(0 == swapcontext(&ctx_, &(Scheduler::GetMainFiber()->ctx_)), 
+        CondPanic(0 == swapcontext(&(Scheduler::GetMainFiber()->ctx_), &ctx_), 
                   "isRunInScheduler_ = true, swapcontext error");
     } else {
         // 否则，与主协程进行上下文的切换
-        CondPanic(0 == swapcontext(&ctx_, &cur_thread_fiber->ctx_), 
+        CondPanic(0 == swapcontext(&(cur_thread_fiber->ctx_), &ctx_), 
                   "isRunInScheduler_ = false, swapcontext error");
     }
 }
