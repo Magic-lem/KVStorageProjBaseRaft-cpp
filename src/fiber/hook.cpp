@@ -6,8 +6,10 @@
 #include "hook.hpp"
 #include <dlfcn.h>  // dlsym, RTLD_NEXT
 #include <cstdarg>
-#include <errno.h>
-#include <memory>
+#include <string>
+#include "fd_manager.hpp"
+#include "fiber.hpp"
+#include "iomanager.hpp"
 
 namespace monsoon {
 // 全局变量，记录当前线程是否启用hook
@@ -579,7 +581,7 @@ int fcntl(int fd, int cmd, .../* arg */) {
       ctx->setUserNonblock(arg & O_NONBLOCK);   // 如果参数arg中包含O_NONBLOCK标志，则设置用户非阻塞标志
 
       // 调整标志值,确保了在调用 fcntl 时，arg 中的 O_NONBLOCK 状态与实际系统设置的非阻塞状态一致。
-      if (ctx->getSysNoneblock()) {  // 如果系统设置了非阻塞，则在arg中添加O_NONBLOCK标志
+      if (ctx->getSysNonblock()) {  // 如果系统设置了非阻塞，则在arg中添加O_NONBLOCK标志
         arg |= O_NONBLOCK;
       } else {    // 否则删除O_NONBLOCK标志
         arg &= ~O_NONBLOCK;

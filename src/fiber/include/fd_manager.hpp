@@ -6,8 +6,10 @@
 #define __FD_MANAGER_H__
 
 #include <memory>
+#include <vector>
 #include "mutex.hpp"
 #include "singleton.hpp"
+#include "thread.hpp"
 
 namespace monsoon {
 // 文件描述符上下文信息类，跟踪描述符的状态和属性（如是否已初始化，是否是socket、是否非阻塞、超时时间等）
@@ -34,7 +36,7 @@ public:
     void setSysNoneblock(bool v) {
         m_sysNonblock = v;
     }
-    bool getSysNoneblock() {
+    bool getSysNonblock() {
         return m_sysNonblock;
     }
 

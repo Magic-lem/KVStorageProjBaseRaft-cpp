@@ -167,6 +167,20 @@ src/fiber/CMakeFiles/fiber_lib.dir/timer.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/fiber_lib.dir/timer.cpp.s"
 	cd /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/cmake-build-debug/src/fiber && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/src/fiber/timer.cpp -o CMakeFiles/fiber_lib.dir/timer.cpp.s
 
+src/fiber/CMakeFiles/fiber_lib.dir/utils.cpp.o: src/fiber/CMakeFiles/fiber_lib.dir/flags.make
+src/fiber/CMakeFiles/fiber_lib.dir/utils.cpp.o: /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/src/fiber/utils.cpp
+src/fiber/CMakeFiles/fiber_lib.dir/utils.cpp.o: src/fiber/CMakeFiles/fiber_lib.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object src/fiber/CMakeFiles/fiber_lib.dir/utils.cpp.o"
+	cd /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/cmake-build-debug/src/fiber && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT src/fiber/CMakeFiles/fiber_lib.dir/utils.cpp.o -MF CMakeFiles/fiber_lib.dir/utils.cpp.o.d -o CMakeFiles/fiber_lib.dir/utils.cpp.o -c /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/src/fiber/utils.cpp
+
+src/fiber/CMakeFiles/fiber_lib.dir/utils.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/fiber_lib.dir/utils.cpp.i"
+	cd /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/cmake-build-debug/src/fiber && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/src/fiber/utils.cpp > CMakeFiles/fiber_lib.dir/utils.cpp.i
+
+src/fiber/CMakeFiles/fiber_lib.dir/utils.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/fiber_lib.dir/utils.cpp.s"
+	cd /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/cmake-build-debug/src/fiber && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/src/fiber/utils.cpp -o CMakeFiles/fiber_lib.dir/utils.cpp.s
+
 # Object files for target fiber_lib
 fiber_lib_OBJECTS = \
 "CMakeFiles/fiber_lib.dir/fiber.cpp.o" \
@@ -175,7 +189,8 @@ fiber_lib_OBJECTS = \
 "CMakeFiles/fiber_lib.dir/iomanager.cpp.o" \
 "CMakeFiles/fiber_lib.dir/scheduler.cpp.o" \
 "CMakeFiles/fiber_lib.dir/thread.cpp.o" \
-"CMakeFiles/fiber_lib.dir/timer.cpp.o"
+"CMakeFiles/fiber_lib.dir/timer.cpp.o" \
+"CMakeFiles/fiber_lib.dir/utils.cpp.o"
 
 # External object files for target fiber_lib
 fiber_lib_EXTERNAL_OBJECTS =
@@ -187,9 +202,10 @@ fiber_lib_EXTERNAL_OBJECTS =
 /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/lib/libfiber_lib.a: src/fiber/CMakeFiles/fiber_lib.dir/scheduler.cpp.o
 /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/lib/libfiber_lib.a: src/fiber/CMakeFiles/fiber_lib.dir/thread.cpp.o
 /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/lib/libfiber_lib.a: src/fiber/CMakeFiles/fiber_lib.dir/timer.cpp.o
+/home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/lib/libfiber_lib.a: src/fiber/CMakeFiles/fiber_lib.dir/utils.cpp.o
 /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/lib/libfiber_lib.a: src/fiber/CMakeFiles/fiber_lib.dir/build.make
 /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/lib/libfiber_lib.a: src/fiber/CMakeFiles/fiber_lib.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Linking CXX static library /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/lib/libfiber_lib.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Linking CXX static library /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/lib/libfiber_lib.a"
 	cd /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/cmake-build-debug/src/fiber && $(CMAKE_COMMAND) -P CMakeFiles/fiber_lib.dir/cmake_clean_target.cmake
 	cd /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/cmake-build-debug/src/fiber && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/fiber_lib.dir/link.txt --verbose=$(VERBOSE)
 

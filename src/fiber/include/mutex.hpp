@@ -6,12 +6,19 @@
 #ifndef __MONSOON_MUTEX_H__
 #define __MONSOON_MUTEX_H__
 
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdint.h>
+#include <atomic>
+#include <functional>
+#include <iostream>
+#include <list>
+#include <memory>
+#include <mutex>
+#include <thread>
+
 #include "noncopyable.hpp"
 #include "utils.hpp"
-#include <stdint.h>   // uint32_t
-#include <semaphore.h>  // sem_t
-#include <iostream>
-#include <pthread.h> 
 
 namespace monsoon {
 

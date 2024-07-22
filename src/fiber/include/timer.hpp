@@ -77,7 +77,7 @@ protected:
 
 private:
     // 检测服务器时间是否被调整（时钟回绕，clock rollover）
-    bool detectCLockRolllover(uint64_t now_ms);
+    bool detectClockRolllover(uint64_t now_ms);
 
     RWMutex mutex_;   // 读写锁对象
     std::set<Timer::ptr, Timer::Comparator> timers_;  // 定时器集合，有序集合，按照制定的规则排序

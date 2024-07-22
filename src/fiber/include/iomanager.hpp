@@ -5,12 +5,11 @@
 #ifndef __SYLAR_IOMANAGER_H__
 #define __SYLAR_IOMANAGER_H__
 
-#include "thread.hpp"
+#include "fcntl.h"
 #include "scheduler.hpp"
+#include "string.h"
+#include "sys/epoll.h"
 #include "timer.hpp"
-#include <sys/epoll.h>
-#include <string.h>
-#include <fcntl.h>
 
 namespace monsoon {
 

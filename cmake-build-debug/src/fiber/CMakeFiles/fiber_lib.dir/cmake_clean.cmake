@@ -15,6 +15,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/fiber_lib.dir/thread.cpp.o.d"
   "CMakeFiles/fiber_lib.dir/timer.cpp.o"
   "CMakeFiles/fiber_lib.dir/timer.cpp.o.d"
+  "CMakeFiles/fiber_lib.dir/utils.cpp.o"
+  "CMakeFiles/fiber_lib.dir/utils.cpp.o.d"
 )
 
 # Per-language clean rules from dependency scanning.

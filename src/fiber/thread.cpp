@@ -4,7 +4,7 @@
 //
 
 #include "thread.hpp"
-#include <iostream>
+#include "utils.hpp"
 
 namespace monsoon {
 // 全局变量，指向当前的线程

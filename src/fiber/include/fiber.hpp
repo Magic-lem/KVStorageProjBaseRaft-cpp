@@ -9,6 +9,10 @@
 #include <memory>  // 智能指针
 #include <functional>   // std::function<T>
 #include <ucontext.h>   // ucontext_t
+#include <stdio.h>
+#include <unistd.h>
+#include <iostream>
+#include "utils.hpp"
 
 // 所有代码都定义在了'monson'命名空间中，避免与其他代码产生命名冲突
 namespace monsoon {
@@ -58,7 +62,7 @@ private:
     ucontext_t ctx_;  // 协程的上下文
     void *stack_ptr = nullptr;    // 协程栈地址
     std::function<void()> cb_;   // 协程回调函数
-    bool isRunInscheduler_;   // 本协程是否参与调度器调度
+    bool isRunInScheduler_;   // 本协程是否参与调度器调度
 };
 }
 

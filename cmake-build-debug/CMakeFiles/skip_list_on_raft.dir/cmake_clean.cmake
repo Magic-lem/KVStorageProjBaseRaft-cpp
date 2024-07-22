@@ -15,6 +15,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/skip_list_on_raft.dir/src/fiber/thread.cpp.o.d"
   "CMakeFiles/skip_list_on_raft.dir/src/fiber/timer.cpp.o"
   "CMakeFiles/skip_list_on_raft.dir/src/fiber/timer.cpp.o.d"
+  "CMakeFiles/skip_list_on_raft.dir/src/fiber/utils.cpp.o"
+  "CMakeFiles/skip_list_on_raft.dir/src/fiber/utils.cpp.o.d"
   "CMakeFiles/skip_list_on_raft.dir/src/raftCore/Persister.cpp.o"
   "CMakeFiles/skip_list_on_raft.dir/src/raftCore/Persister.cpp.o.d"
   "CMakeFiles/skip_list_on_raft.dir/src/raftCore/RaftRpcUtil.cpp.o"

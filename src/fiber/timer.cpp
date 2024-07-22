@@ -36,7 +36,7 @@ Timer::Timer(uint64_t ms, std::function<void()> cb, bool recuring, TimerManager 
     recurring_(recuring), ms_(ms), cb_(cb), manager_(manager) {
     next_ = GetElapsedMS() + ms_;
 } 
-Timer::Timer(uint64_t ms) : ms_(ms) {}
+Timer::Timer(uint64_t next) : next_(next) {}
 
 /*
 Timer::cancel 取消定时器
@@ -188,7 +188,7 @@ void TimerManager::listExpiredCb(std::vector<std::function<void()>> &cbs) {
 
     // 检测时钟回滚
     bool rollover = false;
-    if (detectCLockRolllover(now_ms)) {
+    if (detectClockRolllover(now_ms)) {
         rollover = true;  // 发生了时钟回滚
     }
 
@@ -247,7 +247,7 @@ void TimerManager::addTimer(Timer::ptr val, RWMutex::WriteLock &lock) {
 bool TimerManager::detectClockRolllover 
 主要作用：检查是否发生了时钟回绕
 */
-bool TimerManager::detectCLockRolllover(uint64_t now_ms) {
+bool TimerManager::detectClockRolllover(uint64_t now_ms) {
     bool rollover = false;
     if (now_ms < previouseTime_ && now_ms < (previouseTime_ - 60 * 60 * 1000)) {    // 比上一次执行的时间还小一个小时以上，则判断发生了时钟回绕
         rollover = true;
@@ -262,7 +262,7 @@ bool TimerManager::hasTimer
 */
 bool TimerManager::hasTimer() {
     RWMutex::ReadLock lock(mutex_);  // 加读锁
-    return timers_.empty();
+    return !timers_.empty();
 }
 
 

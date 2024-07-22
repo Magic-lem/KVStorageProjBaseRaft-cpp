@@ -15,6 +15,12 @@
 #include <stdint.h>
 
 namespace monsoon {
+/*
+GetThreadId
+功能：获得线程ID
+*/
+pid_t GetThreadId();
+u_int32_t GetFiberId();
 
 /*
 demangle
@@ -112,15 +118,6 @@ static void CondPanic(bool condition, std::string err){
         std::cout << "[backtrace]\n" << BacktraceToString(6, 3, "") << std::endl;
         assert(condition);
     }
-}
-
-/*
-GetThreadId
-功能：获得线程ID
-*/
-static pid_t GetThreadId() {
-    return syscall(SYS_gettid); // 直接系统调用
-    // return pthread_self();   // pthread封装
 }
 
 /*

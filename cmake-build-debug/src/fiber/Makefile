@@ -298,6 +298,30 @@ timer.cpp.s:
 	cd /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/cmake-build-debug && $(MAKE) $(MAKESILENT) -f src/fiber/CMakeFiles/fiber_lib.dir/build.make src/fiber/CMakeFiles/fiber_lib.dir/timer.cpp.s
 .PHONY : timer.cpp.s
 
+utils.o: utils.cpp.o
+.PHONY : utils.o
+
+# target to build an object file
+utils.cpp.o:
+	cd /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/cmake-build-debug && $(MAKE) $(MAKESILENT) -f src/fiber/CMakeFiles/fiber_lib.dir/build.make src/fiber/CMakeFiles/fiber_lib.dir/utils.cpp.o
+.PHONY : utils.cpp.o
+
+utils.i: utils.cpp.i
+.PHONY : utils.i
+
+# target to preprocess a source file
+utils.cpp.i:
+	cd /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/cmake-build-debug && $(MAKE) $(MAKESILENT) -f src/fiber/CMakeFiles/fiber_lib.dir/build.make src/fiber/CMakeFiles/fiber_lib.dir/utils.cpp.i
+.PHONY : utils.cpp.i
+
+utils.s: utils.cpp.s
+.PHONY : utils.s
+
+# target to generate assembly for a file
+utils.cpp.s:
+	cd /home/lf/LF/cpp/KVStorageProjBaseRaft-cpp/cmake-build-debug && $(MAKE) $(MAKESILENT) -f src/fiber/CMakeFiles/fiber_lib.dir/build.make src/fiber/CMakeFiles/fiber_lib.dir/utils.cpp.s
+.PHONY : utils.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -328,6 +352,9 @@ help:
 	@echo "... timer.o"
 	@echo "... timer.i"
 	@echo "... timer.s"
+	@echo "... utils.o"
+	@echo "... utils.i"
+	@echo "... utils.s"
 .PHONY : help
 
 

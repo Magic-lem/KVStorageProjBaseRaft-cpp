@@ -4,9 +4,10 @@
 //
 
 #include "fiber.hpp"
-#include "utils.hpp"
-#include "scheduler.hpp"
+#include <assert.h>
 #include <atomic>
+#include "scheduler.hpp"
+#include "utils.hpp"
 
 namespace monsoon {
 const bool DEBUG = true; 
@@ -56,7 +57,7 @@ Input：std::function<void()> cb  协程的回调函数
        bool run_in_scheduler   是否参与调度器调度
 */
 Fiber::Fiber(std::function<void()> cb, size_t stacksize, bool run_in_scheduler)
-        : id_(cur_fiber_id++), cb_(cb), isRunInscheduler_(run_in_scheduler) {
+        : id_(cur_fiber_id++), cb_(cb), isRunInScheduler_(run_in_scheduler) {
     ++fiber_count;
     stackSize_ = stacksize > 0 ? stacksize : g_fiber_stack_size;
     stack_ptr = StackAllocator::Alloc(stackSize_);   // 基于协程的占空间大小为协程分配内存
@@ -102,7 +103,7 @@ void Fiber::resume() {
     state_ = RUNNING;
 
     // 执行协程的上下文切换
-    if (isRunInscheduler_) {
+    if (isRunInScheduler_) {
         // 如果是参与调度器调度，则与调度器进行上下文的切换
         CondPanic(0 == swapcontext(&(Scheduler::GetMainFiber()->ctx_), &ctx_), 
                   "isRunInScheduler_ = true, swapcontext error");
@@ -124,7 +125,7 @@ void Fiber::yield() {
         // 协程还没执行完毕，设为就绪态等待下次执行
         state_ = READY;
     }
-    if (isRunInscheduler_) {
+    if (isRunInScheduler_) {
         CondPanic(0 == swapcontext(&ctx_, &Scheduler::GetMainFiber()->ctx_), 
                   "isRunInScheduler_ = true, swapcontext error");
     } else {

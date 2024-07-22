@@ -6,13 +6,18 @@
 #ifndef __MONSOON_SCHEDULER_H__
 #define __MONSOON_SCHEDULER_H__
 
-#include "fiber.hpp"
-#include "thread.hpp"
-#include "mutex.hpp"  
-#include <string>
-#include <vector>
-#include <list>
 #include <atomic>
+#include <boost/type_index.hpp>
+#include <functional>
+#include <list>
+#include <memory>
+#include <mutex>
+#include <vector>
+#include "fiber.hpp"
+#include "mutex.hpp"
+#include "thread.hpp"
+#include "utils.hpp"
+
 
 namespace monsoon {
 
@@ -95,7 +100,7 @@ protected:
     virtual bool stopping();   // 返回是否可以停止
     void setThis();    // 设置当前线程调度器
     bool isHasIdleThreads() {   // 有没有空闲进程
-        return idleTreadCnt_  > 0;
+        return idleThreadCnt_  > 0;
     }
 
 
@@ -119,7 +124,7 @@ private:
     std::vector<int> threadIds_;   // 线程池ID数组
     size_t threadCnt_ = 0;   // 工作线程数量（不包含主线程）
     std::atomic<size_t> activeThreadCnt_ = {0};   // 活跃线程数目
-    std::atomic<size_t> idleTreadCnt_ = {0};  // IDL线程（在线程池中处于空闲的线程）数目
+    std::atomic<size_t> idleThreadCnt_ = {0};  // IDL线程（在线程池中处于空闲的线程）数目
     Fiber::ptr rootFiber_;   // 指向本线程的调度协程（主协程）
     bool isUseCaller_;   // 是否使用use_caller模式
     bool isStopped_ = false;   // 线程池或调度器是否已经停止

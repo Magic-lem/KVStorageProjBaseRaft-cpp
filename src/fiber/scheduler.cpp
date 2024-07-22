@@ -3,10 +3,10 @@
 // created by magic_pri on 2024-6-25
 //
 
-#include "mutex.hpp"
 #include "scheduler.hpp"
-#include "utils.hpp"
+#include "fiber.hpp"
 #include "hook.hpp"
+
 
 namespace monsoon {
 // 静态全局变量，记录调度器实例等
@@ -24,6 +24,8 @@ Input: size_t threads 总线程数
 */
 Scheduler::Scheduler(size_t threads, bool use_caller, const std::string &name){
     CondPanic(threads > 0, "thread <= 0");
+    
+    isUseCaller_ = use_caller;
     name_ = name;
 
     if (use_caller) {   // use_caller模式，当前线程也作为被调度的线程
@@ -178,9 +180,9 @@ void Scheduler::run() {
                 break; 
             }
             // idle协程正常时，不断空轮转(idle协程执行->idle协程yield挂起->进入调度器主循环->没有任务->idle协程执行)
-            ++idleTreadCnt_;    // 增加空闲线程数量，表示本线程为空闲
+            ++idleThreadCnt_;    // 增加空闲线程数量，表示本线程为空闲
             idleFiber->resume();    // 空闲期间执行dile协程
-            --idleTreadCnt_;    // idle协程退出，此线程开始新的循环寻找任务
+            --idleThreadCnt_;    // idle协程退出，此线程开始新的循环寻找任务
         }
     }
     std::cout << "run exit" << std::endl;   // 触发了打破循环的条件，调度器退出运行

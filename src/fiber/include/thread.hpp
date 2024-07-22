@@ -8,9 +8,14 @@
 
 #include <sys/types.h>    // pit_t  进程ID
 #include <pthread.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 #include <functional>
-#include <string>
+#include <iostream>
 #include <memory>
+#include <thread>
 
 namespace monsoon {
 /*
