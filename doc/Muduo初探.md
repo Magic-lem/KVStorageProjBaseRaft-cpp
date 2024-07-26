@@ -56,11 +56,11 @@ Reactor 模式由 `Reactor 线程`、`Handlers 处理器`两大角色组成，�
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/285e1938ff1f47579381a53ac8b17ead.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA5p-P5rK5,size_20,color_FFFFFF,t_70,g_se,x_16#pic_center)
 
-Reactor 多线程模型**将`<font color='red'>业务逻辑``</font>`交给多个线程进行处理**。除此之外，多线程模型其他的操作与单线程模型是类似的，比如**连接建立、IO事件读写以及事件分发**等都是由**一个线程**来完成。
+Reactor 多线程模型**将 `<font color='red'>业务逻辑``</font>`交给多个线程进行处理**。除此之外，多线程模型其他的操作与单线程模型是类似的，比如**连接建立、IO事件读写以及事件分发**等都是由**一个线程**来完成。
 
 当客户端有数据发送至服务端时，Select 会监听到可读事件，数据读取完毕后提交到业务线程池中并发处理。一般的请求中，耗时最长的一般是业务处理，所以用一个线程池（worker 线程池）来处理业务操作，在性能上的提升也是非常可观的。
 
-当然，这种模型也有明显缺点，**连接建立、IO 事件读取以及事件分发完全有单线程处理**；比如当**`<font color='cornflowerblue'>`某个连接通过系统调用正在读取数据，此时相对于其他事件来说，完全是阻塞状态，新连接无法处理、其他连接的 IO、查询 IO 读写以及事件分发都无法完成`</font>`**。对于像 Nginx、Netty 这种对高性能、高并发要求极高的网络框架，这种模式便显得有些吃力了。因为，`<font color='cornflowerblue'>`**无法及时处理新连接、就绪的 IO 事件以及事件转发等。**`</font>`
+当然，这种模型也有明显缺点，**连接建立、IO 事件读取以及事件分发完全有单线程处理**；比如当**`<font color='cornflowerblue'>`某个连接通过系统调用正在读取数据，此时相对于其他事件来说，完全是阻塞状态，新连接无法处理、其他连接的 IO、查询 IO 读写以及事件分发都无法完成 `</font>`**。对于像 Nginx、Netty 这种对高性能、高并发要求极高的网络框架，这种模式便显得有些吃力了。因为，`<font color='cornflowerblue'>`**无法及时处理新连接、就绪的 IO 事件以及事件转发等。**`</font>`
 
 ### 主从多线程Reactor模型
 
@@ -71,13 +71,13 @@ Reactor 多线程模型**将`<font color='red'>业务逻辑``</font>`交给多�
 1. 主 Reactor 可以解决同一时间大量新连接，将其注册到从 Reactor 上进行IO事件监听处理
 2. IO事件监听相对新连接处理更加耗时，此处我们可以考虑**使用线程池来处理**。这样能充分利用多核 CPU 的特性，能使更多就绪的IO事件及时处理。
 
-主从多线程模型由**多个 Reactor 线程**组成，每个 Reactor 线程都有独立的 Selector 对象。`<font color='red'>`**MainReactor 仅负责处理客户端连接的 Accept 事件**`</font>`，连接建立成功后将新创建的连接对象注册至 SubReactor。再由 `<font color='red'>`**SubReactor 分配线程池中的 I/O 线程与其连接绑定，它将负责连接生命周期内所有的 I/O 事件**`</font>`。
+主从多线程模型由**多个 Reactor 线程**组成，每个 Reactor 线程都有独立的 Selector 对象。`<font color='red'>`**MainReactor 仅负责处理客户端连接的 Accept 事件** `</font>`，连接建立成功后将新创建的连接对象注册至 SubReactor。再由 `<font color='red'>`**SubReactor 分配线程池中的 I/O 线程与其连接绑定，它将负责连接生命周期内所有的 I/O 事件** `</font>`。
 
 在海量客户端并发请求的场景下，主从多线程模式甚至可以**适当增加 SubReactor 线程的数量**，从而利用多核能力提升系统的吞吐量。****
 
 ### 总结
 
-Reactor核心是围绕`<font color='red'>事件驱动``</font>`模型
+Reactor核心是围绕 `<font color='red'>事件驱动``</font>`模型
 
 - 一方面监听并处理IO事件
 - 另一方面将这些处理好的事件分发业务线程处理
@@ -95,7 +95,7 @@ Reactor核心是围绕`<font color='red'>事件驱动``</font>`模型
 
 ## Muduo基本架构
 
-采用了**`<font color='red'>`主从多线程reactor模型 + 线程池`</font>`**的架构。`Main Reactor`只用于监听新的连接，在 `accept`之后就会将这个连接分配到 `Sub Reactor`上，由 `子Reactor`负责连接的事件处理。线程池中维护了两个队列，一个**队伍队列**，一个**线程队列**，外部线程将任务添加到任务队列中，如果线程队列非空，则会唤醒其中一只线程进行任务的处理，相当于是**生产者和消费者模型**。
+采用了**`<font color='red'>`主从多线程reactor模型 + 线程池 `</font>`**的架构。`Main Reactor`只用于监听新的连接，在 `accept`之后就会将这个连接分配到 `Sub Reactor`上，由 `子Reactor`负责连接的事件处理。线程池中维护了两个队列，一个**任务队列**，一个**线程队列**，外部线程将任务添加到任务队列中，如果线程队列非空，则会唤醒其中一只线程进行任务的处理，相当于是**生产者和消费者模型**。
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/1000cea689714585a6efa392958fc354.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA5p-P5rK5,size_20,color_FFFFFF,t_70,g_se,x_16#pic_center)
 
@@ -222,7 +222,7 @@ bool hasChannel(Channel channel) const*： 检查Poller中是否包含指定的C
 >
 > **等待事件**：
 >
-> - 在事件循环中，调用`<font color='red'>poll``</font>`方法等待事件发生，并获取活跃的 `Channel`列表。
+> - 在事件循环中，调用 `<font color='red'>poll``</font>`方法等待事件发生，并获取活跃的 `Channel`列表。
 >
 > **分发事件**：
 >
@@ -549,7 +549,7 @@ void EchoServer::onMessage(const muduo::net::TcpConnectionPtr& conn, muduo::net:
     conn->send(msg);
 }
 
-int main(){                          
+int main(){                        
     // 打印日志，输出当前进程的PID
     LOG_INFO << "pid = " << getpid();
 
@@ -589,7 +589,7 @@ int main(){
    ```
 2. **`loop.loop()`事件循环的作用**
 
-   如果不调用 `loop.loop()`，程序会在 `server.start()` 之后立即退出，服务器将无法接收和处理客户端连接。`loop.loop()` 是事件驱动服务器程序的核心，它使得程序进入**事件循环**，能够持续处理网络事件，保持服务器运行和响应客户端请求。没有这个调用，服务器将无法正常运行。（循环内部是通过`Channel`和`Poller`来实现对文件描述符的事件监听）
+   如果不调用 `loop.loop()`，程序会在 `server.start()` 之后立即退出，服务器将无法接收和处理客户端连接。`loop.loop()` 是事件驱动服务器程序的核心，它使得程序进入**事件循环**，能够持续处理网络事件，保持服务器运行和响应客户端请求。没有这个调用，服务器将无法正常运行。（循环内部是通过 `Channel`和 `Poller`来实现对文件描述符的事件监听）
 
    Muduo 库中的 `EventLoop` 类封装了 I/O 多路复用和事件处理机制，提供了更高层次的接口。`loop.loop()` 实现了一个高效的事件循环，具备以下优势：
 

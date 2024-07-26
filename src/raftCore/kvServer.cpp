@@ -158,7 +158,7 @@ void KvServer::Get(const raftKVRpcProctoc::GetArgs *args, raftKVRpcProctoc::GetR
 
 /*
 GetCommandFromRaft 函数
-主要功能：kvserver 处理从 Raft 集群中收到的Put或Append命令，解析Raft日志条目，执行相应的操作，并处理与客户端请求相关的状态同步问题
+主要功能：kvserver 处理从 Raft 集群中收到的Get、Put/Append命令，解析Raft日志条目，执行相应的操作，并处理与客户端请求相关的状态同步问题
 */
 void KvServer::GetCommandFromRaft(ApplyMsg message) {
   // 1. 解析命令
@@ -173,14 +173,14 @@ void KvServer::GetCommandFromRaft(ApplyMsg message) {
     return;
   }
 
-  // 3. 去重和执行命令
+  // 3. 去重和执行命令，这里不需要执行Get，因为Get结果要返回给客户端所以不在这里执行
   if (!ifRequestDuplicate(op.ClientId, op.RequestId)) {   
     // put和append都不需要重复执行，如果重复了就不执行了
     if (op.Operation == "Put") {
-      ExecutePutOpOnKVDB(op);
+      ExecutePutOpOnKVDB(op);   
     }
     if (op.Operation == "Append") {
-    ExecuteAppendOpOnKVDB(op);
+      ExecuteAppendOpOnKVDB(op);
     }
   }
 

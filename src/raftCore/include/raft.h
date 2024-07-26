@@ -117,7 +117,7 @@ private:
   enum Status { Follower, Candidate, Leader };
   Status m_status;    // 当前节点的状态（Follower、Candidate、Leader）
   
-  std::shared_ptr<LockQueue<ApplyMsg>> applyChan;     // 指向一个线程安全的日志队列，
+  std::shared_ptr<LockQueue<ApplyMsg>> applyChan;     // 指向一个线程安全的日志队列，用于raft节点和kv server的通信
   
   std::chrono::_V2::system_clock::time_point m_lastResetElectionTime;   // 最近一次重置选举计时器的时间
   std::chrono::_V2::system_clock::time_point m_lastResetHearBeatTime;   // 最近一次重置心跳计时器的时间
