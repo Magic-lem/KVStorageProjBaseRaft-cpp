@@ -9,7 +9,7 @@
 > - 分布式是指**多个系统协同合作完成一个特定任务的系统**。是**不同的系统**部署在不同的服务器上，服务器之间相互调用。主要工作是分解任务，把职能拆解，解决中心化管理。
 > - 集群是指**在几个服务器上部署相同的应用程序来分担客户端的请求**。是**同一个系统**部署在不同的服务器上，比如一个登陆系统部署在不同的服务器上。使用场景是为了分担请求的压力。
 
-![98ef710d2882cb08df2a48562547178c.png](doc\figures\分布式示例.png)
+![98ef710d2882cb08df2a48562547178c.png](doc/figures/分布式示例.png)
 
 **分布式系统面临的挑战：**
 
@@ -35,7 +35,7 @@
 - **P partition tolerance 分区容错性（容灾）**
 - 分布式系统的部署可能跨省，甚至跨国。不同省份或者国家之间的服务器节点是通过网络进行连接，此时如果**两个地域之间的网络连接断开，整个分布式系统的体现就是分区容错性了**。在这种系统出现网络分区的情况下系统的服务就**需要在一致性 和 可用性之间进行取舍**。要么保持一致性，返回错误。要么是保证可用性，使得两个地域之间的分布式系统不一致。
 
-![image (4)](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\CAP.png)
+![image (4)](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc/figures/CAP.png)
 
 ==**CAP理论一定是无法全部满足三者，只能满足其中的两者（CA、CP、AP）。**==
 
@@ -51,7 +51,7 @@
 
 ### 3.1 分布一致性概述
 
-![image (5)](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\分布一致性.png)
+![image (5)](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc/figures/分布一致性.png)
 
 分布式一致性是指在**分布式环境**中对某个副本数据进行更新操作时，必须**确保其他副本也会更新**，避免不同副本数据不一致。
 
@@ -86,7 +86,7 @@
 
 顺序一致性最早是用来描述多核 CPU 的行为：如果可以找到一个所有 CPU 执行指令的排序，该排序中**每个 CPU 要执行指令的顺序得以保持**，且实际的 **CPU 执行结果与该指令排序的执行结果一致**，则称该次执行达到了顺序一致性。例如：
 
-![img](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\Sequential-Consistency.svg)
+![img](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc/figures/Sequential-Consistency.svg)
 
 我们找到了指令的一个排序，排序中各个 CPU 的指令顺序得以保持（如 `C: R(X, 1)` 在 `C: R(X, 2)` 之前），这个排序的执行结果与 CPU 分开执行的结果一致，因此该 CPU 的执行是满足顺序一致性的。
 
@@ -94,7 +94,7 @@
 
 **反例：**
 
-![img](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\Sequential-Consistency-swap-2.svg)
+![img](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc/figures/Sequential-Consistency-swap-2.svg)
 
 上图的系统，实际上是找不到一个全局的排序来满足顺序一致性的需求的。根本上，从 C 的顺序推导出 X 的写入顺序为 `1 -> 2`，而同时由 D 推出写入顺序为 `2 -> 1` ，二者矛盾。
 
@@ -143,7 +143,7 @@
 
 ### 5.1 算法概述
 
-![image (6)](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\raft概述.png)
+![image (6)](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc/figures/raft概述.png)
 
 Raft算法又被称为基于**日志复制**的一致性算法，旨在解决分布式系统中多个节点之间的数据一致性问题。它通过选举一个**`领导者（Leader）`**，让 `领导者`负责管理和协调日志复制，确保所有节点的数据一致。
 
@@ -187,7 +187,7 @@ Raft算法又被称为基于**日志复制**的一致性算法，旨在解决分
 
 日志中保存`<font color='cornflowerblue'>`**客户端发送来的命令**`</font>`，上层的状态机根据日志执行命令，那么**日志一致，自然上层的状态机就是一致的**。结构如下：
 
-![img](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\日志结构.png)
+![img](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc/figures/日志结构.png)
 
 其中，每一个元素被称为一个日志条目 `entry`，每个日志条目包含一个Index、Term以及具体的命令Command。
 
@@ -233,7 +233,7 @@ Raft算法又被称为基于**日志复制**的一致性算法，旨在解决分
 
   系统中的 `追随者(follower)`**未收到日志同步(也可理解为心跳)**转变成为 `候选者(Candidate)`，在成为 `候选者(Candidate)`后，不满足于自己现在状态，迫切的想要成为 `领导者(leader)`，虽然它给自己投了1票，但很显然1票是不够，它需要其它节点的选票才能成为领导者，所以**通过RPC请求其它节点给自己投票**。
 
-  ![img](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\领导者选举.png)
+  ![img](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc/figures/领导者选举.png)
 - ##### 符合什么条件的节点可以成为leader？（ 选举限制 ）
 
   目的：保证选举出的 `leader` 一定包含了整个集群中目前已 `committed` 的所有日志
@@ -271,7 +271,7 @@ Raft算法又被称为基于**日志复制**的一致性算法，旨在解决分
 
   **日志同步（复制）的过程：**
 
-  ![日志复制](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\日志复制.png)
+  ![日志复制](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc/figures/日志复制.png)
 
 **-------------------------------------------------------------------------------------------Raft算法的核心步骤👇------------------------------------------------------------------------------------------------**
 
@@ -322,7 +322,7 @@ Raft算法又被称为基于**日志复制**的一致性算法，旨在解决分
 
 Raft的一大优势就是**Fault Tolerance**（容灾），即能够在部分节点宕机、失联或者出现网络分区的情况下依旧让系统正常运行。为了保证这一点，除了领导选举与日志复制外，还需要定期将一些数据持久化到磁盘中，以实现在服务器重启时利用持久化存储的数据恢复节点上一个工作时刻的状态。持久化的内容仅仅是 `Raft`层, 其应用层不做要求。
 
-![img](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\持久化.png)
+![img](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc/figures/持久化.png)
 
 **论文中提到需要持久化的数据包括:**
 
@@ -512,7 +512,7 @@ private:
 
 **Leader选举的整体流程图：**
 
-![选举](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\选举.png)
+![选举](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc/figures/选举.png)
 
 - **electionTimeOutTicker** ：负责查看是否该发起选举，如果该发起选举就执行doElection发起选举。
 - **doElection** ：实际发起选举，构造需要发送的rpc，并多线程调用sendRequestVote处理rpc及其相应。
@@ -523,7 +523,7 @@ private:
 
 **日志复制和心跳的整体流程图：**
 
-![c420e41da1361a0c55ff50fd7b45b4e0](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc\figures\日志复制心跳.png)
+![c420e41da1361a0c55ff50fd7b45b4e0](G:\code\study\KVStorage\KVStorageProjBaseRaft-cpp\doc/figures/日志复制心跳.png)
 
 - **leaderHearBeatTicker** :作为定时器功能，负责查看是否该发送心跳了，如果该发起就执行doHeartBeat。
 - **doHeartBeat** :实际发送心跳，判断到底是构造需要发送的rpc，并多线程调用sendRequestVote处理rpc及其相应。
